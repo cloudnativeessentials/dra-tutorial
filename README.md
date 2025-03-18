@@ -8,5 +8,8 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 
 
 ## Tutorial overview:
-- Cluster setup
+- DRA Resources
+  - review the Kubernetes resources for Dynamic Resource Allocation 
+- Installing a DRA driver
+- Running a Pod accessing a GPU via DRA
 
