@@ -12,4 +12,6 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
   - review the Kubernetes resources for Dynamic Resource Allocation 
 - Installing a DRA driver
 - Running a Pod accessing a GPU via DRA
-
+- IoT Leaf Devices with Project Akri
+- NVIDIA DRA drivers
+- Intel DRA drivers

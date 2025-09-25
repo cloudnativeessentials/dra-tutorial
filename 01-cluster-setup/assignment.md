@@ -76,3 +76,10 @@ cd dra-example-driver
 ```
 ./scripts/demo/load-driver-image-into-kind.sh
 ```
+
+
+## CDI 
+
+## Driver installations
+
+## Compare to device plugins

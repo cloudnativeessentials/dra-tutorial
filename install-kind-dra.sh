@@ -4,25 +4,29 @@ set -e
 echo "This script installs prereqs Docker, kind, kubectl, and creates a kind cluster"
 echo "This will take several minutes to complete"
 
+# install git 
+sudo yum install -y git
+
 # install make
 echo "Installing make"
-dnf install -y make
+sudo yum install -y make
 
 # install tar
 echo "Installing tar"
-dnf install -y tar
+sudo yum install -y tar
 
 # install docker 
 echo "Installing docker"
-yum install -y yum-utils
-yum-config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
-yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-systemctl enable docker
-systemctl start docker
-docker buildx install
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo docker buildx install
 
 # install jq
-yum install -y jq
+sudo yum install -y jq
 
 # install kind for AMD64/x86_64
 curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
@@ -39,16 +43,23 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
 
 # install kubectl
-install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 # git clone dra driver
-git clone https://github.com/reylejano/dra-example-driver.git
+git clone https://github.com/kubernetes-sigs/dra-example-driver.git
+cd dra-example-driver.git 
+git checkout eb89e97
 
+# TEST cd dra-example-driver
+# TEST git checkout 5e8f4f9 # env kind failed
+# TEST git checkout 5ff76f1 # works but 1.31
+# TEST git checkout eb89e97  # works and is on 1.32
+# TEST continue to build driver 
 # build drivercd
-./dra-example-driver/demo/build-driver.sh
+sudo ./demo/build-driver.sh
 
 # create kind cluster 
-./dra-example-driver/demo/create-cluster.sh
+sudo ./demo/create-cluster.sh
 
 # install helm
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sh
