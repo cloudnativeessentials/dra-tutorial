@@ -29,7 +29,7 @@ sudo docker buildx install
 sudo yum install -y jq
 
 # install kind for AMD64/x86_64
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.30.0/kind-linux-amd64
 chmod +x ./kind
 mv ./kind /usr/local/bin/kind
 
