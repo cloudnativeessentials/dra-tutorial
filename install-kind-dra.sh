@@ -47,7 +47,7 @@ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 # git clone dra driver
 git clone https://github.com/kubernetes-sigs/dra-example-driver.git
-cd dra-example-driver.git 
+cd dra-example-driver
 git checkout eb89e97
 
 # TEST cd dra-example-driver
