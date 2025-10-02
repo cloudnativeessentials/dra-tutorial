@@ -17,6 +17,10 @@ sudo systemctl start docker
 echo "Installing jq"
 sudo yum install -y jq
 
+# install git
+echo "Installing git"
+sudo yum install -y git
+
 # install kind for AMD64/x86_64
 echo "Installing kind"
 curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.30.0/kind-linux-amd64
