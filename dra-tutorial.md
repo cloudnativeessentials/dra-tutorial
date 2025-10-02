@@ -2,16 +2,35 @@
 
 At the heart of the AI revolution are GPUs and the platform that provides access to them is Kubernetes. 
 Workloads historically access GPUs and other devices with the device plugin API but features are lacking. 
-The new Dynamic Resource Allocation (DRA) feature helps maximize GPU utilization across workloads with 
-additional features like the ability to control device sharing across Pods, use multiple GPU models per node, 
-handle dynamic allocation of multi-instance GPU (MIG) and more. DRA is not limited to GPUs but any specialized 
-hardware that a Pod may use including network attached resources such as edge devices like IP cameras.
+The new Dynamic Resource Allocation (DRA) feature helps maximize GPU utilization across workloads with additional features like the ability to control device sharing across Pods, use multiple GPU models per node, handle dynamic allocation of multi-instance GPU (MIG) and more. DRA is not limited to GPUs but any specialized hardware that a Pod may use including network attached resources such as edge devices like IP cameras.
 DRA is a new way to request for resources like GPUs and gives the ability to precisely control how resources are shared between Pods.
 This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the Kubernetes cluster and walks through multiple ways to use DRA to request for GPU and a network attached resource. 
 
 
-Kubernetes 1.34 was released in August and the core components of DRA was GA’d 
+## Module 1: Introduction to Dynamic Resource Allocation (DRA)
+Kubernetes 1.34 was released in August and the core components of DRA were promoted to stable / GA.
+Workloads need more than CPU and memory but also need specialized hardware.
+DRA is a new API for Pods to request and access specialized hardware like accelerators or network-attached devices.
+Support for hardware are provided by vendors via DRA drivers.
 
+The previous way of accessing specialized hardware was with node plugins and had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric.
+
+Node plugins are good for requesting single, linear quantity of resources.
+
+
+## Cluster setup
+
+Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
+
+Log into your VM
+```shell
+```
+
+There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
+
+Run the install script:
+```shell
+```
 
 Module 1
 5 minutes - What is DRA
