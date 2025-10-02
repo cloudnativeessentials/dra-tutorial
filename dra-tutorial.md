@@ -57,6 +57,7 @@ Output:
 ```shell
 ```
 
+Let's look at the DRA resources 
 
 Module 1
 5 minutes - What is DRA
