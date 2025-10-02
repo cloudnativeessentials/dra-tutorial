@@ -37,9 +37,25 @@ curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/h
 Output:
 
 ```shell
-Cluster is ready
+kind cluster is ready
 ```
 
+Let's test the cluster
+```shell
+kubectl version
+```
+
+Output:
+```shell
+```
+
+```shell
+kubectl get nodes
+```
+
+Output:
+```shell
+```
 
 
 Module 1
