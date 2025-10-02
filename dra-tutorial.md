@@ -30,7 +30,14 @@ There is a script that will install kind cluster with 1 control plane and 1 work
 
 Run the install script:
 ```shell
+curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind-cilium.sh | sh
 ```
+
+Output:
+
+```shell
+```
+
 
 Module 1
 5 minutes - What is DRA
