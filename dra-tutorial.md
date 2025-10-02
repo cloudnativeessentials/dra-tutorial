@@ -6,6 +6,7 @@ The new Dynamic Resource Allocation (DRA) feature helps maximize GPU utilization
 DRA is a new way to request for resources like GPUs and gives the ability to precisely control how resources are shared between Pods.
 This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the Kubernetes cluster and walks through multiple ways to use DRA to request for GPU and a network attached resource. 
 
+In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
 ## Module 1: Introduction to Dynamic Resource Allocation (DRA)
 Kubernetes 1.34 was released in August and the core components of DRA were promoted to stable / GA.
@@ -36,7 +37,9 @@ curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/h
 Output:
 
 ```shell
+Cluster is ready
 ```
+
 
 
 Module 1
