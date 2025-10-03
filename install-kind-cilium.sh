@@ -4,6 +4,12 @@ set -e
 echo "This script installs Docker, kind, kubectl, and creates a kind cluster"
 echo "This will take several minutes to complete"
 
+# Increase inotify limits
+sudo sysctl fs.inotify.max_user_watches=524288
+sudo sysctl fs.inotify.max_user_instances=512
+echo "sysctl fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf
+echo "sysctl fs.inotify.max_user_instances=512" | sudo tee -a /etc/sysctl.conf
+
 # install docker 
 echo "Installing docker"
 sudo yum install -y yum-utils
