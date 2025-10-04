@@ -37,6 +37,21 @@ curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/h
 Output:
 
 ```shell
+This script installs Docker, kind, kubectl, and creates a kind cluster
+This will take several minutes to complete
+fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 512
+sysctl fs.inotify.max_user_watches=524288
+sysctl fs.inotify.max_user_instances=512
+Installing docker
+Updating Subscription Management repositories.
+Unable to read consumer identity
+...
+Cluster Pods:          3/3 managed by Cilium
+Helm chart version:    1.18.0
+Image versions         cilium             quay.io/cilium/cilium:v1.18.0@sha256:dfea023972d06ec183cfa3c9e7809716f85daaff042e573ef366e9ec6a0c0ab2: 2
+                       cilium-envoy       quay.io/cilium/cilium-envoy:v1.34.4-1753677767-266d5a01d1d55bd1d60148f991b98dac0390d363@sha256:231b5bd9682dfc648ae97f33dcdc5225c5a526194dda08124f5eded833bf02bf: 2
+                       cilium-operator    quay.io/cilium/operator-generic:v1.18.0@sha256:398378b4507b6e9db22be2f4455d8f8e509b189470061b0f813f0fabaf944f51: 1
 kind cluster is ready
 ```
 
@@ -47,17 +62,89 @@ kubectl version
 
 Output:
 ```shell
+Client Version: v1.34.1
+Kustomize Version: v5.7.1
+Server Version: v1.34.0
 ```
+DRA was stable in v1.34, previous versions require enabling DRA.
 
+Check the cluster's nodes:
 ```shell
 kubectl get nodes
 ```
 
 Output:
 ```shell
+NAME                 STATUS   ROLES           AGE     VERSION
+kind-control-plane   Ready    control-plane   2m27s   v1.34.0
+kind-worker          Ready    <none>          2m14s   v1.34.0
 ```
 
 Let's look at the DRA resources 
+
+## DeviceClass
+
+The DeviceClass resource correspondes a resource driver with a named resource in the cluster.
+Contains pre-defined selection criteria for certain devices and configuration for them.
+Can include optional parameters like a GPUClaimParameters that we'll look at later.
+
+Each request to allocate a device in a ResourceClaim must reference exactly one DeviceClass.
+```shell
+kubectl explain deviceclass
+```
+
+Output:
+```shell
+GROUP:      resource.k8s.io
+KIND:       DeviceClass
+VERSION:    v1
+
+DESCRIPTION:
+    DeviceClass is a vendor- or admin-provided resource that contains device
+    configuration and selectors. It can be referenced in the device requests of
+    a claim to apply these presets. Cluster scoped.
+    
+    This is an alpha type and requires enabling the DynamicResourceAllocation
+    feature gate.
+    
+FIELDS:
+  apiVersion	<string>
+    APIVersion defines the versioned schema of this representation of an object.
+    Servers should convert recognized schemas to the latest internal value, and
+    may reject unrecognized values. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+  kind	<string>
+    Kind is a string value representing the REST resource this object
+    represents. Servers may infer this from the endpoint the client submits
+    requests to. Cannot be updated. In CamelCase. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+  metadata	<ObjectMeta>
+    Standard object metadata
+
+  spec	<DeviceClassSpec> -required-
+    Spec defines what can be allocated and how to configure it.
+    
+    This is mutable. Consumers have to be prepared for classes changing at any
+    time, either because they get updated or replaced. Claim allocations are
+    done once based on whatever was set in classes at the time of allocation.
+    
+    Changing the spec automatically increments the metadata.generation number.
+```
+
+A DeviceClass template is:
+```yaml
+apiversion: resource.k8s.io/v1alpha3
+kind: DeviceClass
+metadata:
+  name: gpu.nvidia.com
+driverName: gpu.resource.nvidia.com
+parametersRef:
+  apiGroup: <api-group>
+  kind: <kind>
+  name: <name>
+```
 
 Module 1
 5 minutes - What is DRA
