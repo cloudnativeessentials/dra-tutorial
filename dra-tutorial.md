@@ -89,6 +89,9 @@ Contains pre-defined selection criteria for certain devices and configuration fo
 Can include optional parameters like a GPUClaimParameters that we'll look at later.
 
 Each request to allocate a device in a ResourceClaim must reference exactly one DeviceClass.
+A DeviceClas defines a category of devices.
+The DeviceClass may be installed with the driver.
+
 ```shell
 kubectl explain deviceclass
 ```
@@ -138,13 +141,90 @@ A DeviceClass template is:
 apiversion: resource.k8s.io/v1alpha3
 kind: DeviceClass
 metadata:
-  name: gpu.nvidia.com
-driverName: gpu.resource.nvidia.com
-parametersRef:
-  apiGroup: <api-group>
-  kind: <kind>
-  name: <name>
+  name: gpu.vendor.com
+spec:
+  selectors:
+  - cel:
+      expression: "device.driver == 'gpu.vendor.com'"
 ```
+
+## ResourceClaim
+Describes a request for access to resources in the cluster, for use by workloads. 
+For example, if a workload needs an accelerator device with specific properties, this is how that request is expressed. 
+The `status` stanza tracks whether this claim has been satisfied and what specific resources have been allocated.
+A ResourceClaim is a claim to use a specific DeviceClass and represents an acual resource allocation made by the resource driver.
+Users create ResourceClaims and reger to the DeviceClass they want to allocate resources for. The Pod can then use these resources with a ResourceClaim.
+
+```shell
+kubectl explain resourceclaim
+```
+
+Output:
+```shell
+GROUP:      resource.k8s.io
+KIND:       ResourceClaim
+VERSION:    v1
+
+DESCRIPTION:
+    ResourceClaim describes a request for access to resources in the cluster,
+    for use by workloads. For example, if a workload needs an accelerator device
+    with specific properties, this is how that request is expressed. The status
+    stanza tracks whether this claim has been satisfied and what specific
+    resources have been allocated.
+    
+    This is an alpha type and requires enabling the DynamicResourceAllocation
+    feature gate.
+    
+FIELDS:
+  apiVersion	<string>
+    APIVersion defines the versioned schema of this representation of an object.
+    Servers should convert recognized schemas to the latest internal value, and
+    may reject unrecognized values. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+  kind	<string>
+    Kind is a string value representing the REST resource this object
+    represents. Servers may infer this from the endpoint the client submits
+    requests to. Cannot be updated. In CamelCase. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+  metadata	<ObjectMeta>
+    Standard object metadata
+
+  spec	<ResourceClaimSpec> -required-
+    Spec describes what is being requested and how to configure it. The spec is
+    immutable.
+
+  status	<ResourceClaimStatus>
+    Status describes whether the claim is ready to use and what has been
+    allocated.
+```
+
+
+ResourceClaims can be created manually by users or by Kubernetes from a ResourceClaimTemplate.
+If a ResourceClaimTemplate is used then the ResourceClaim is tied to a specific Pod and tied to the Pod's lifecycle.
+If a ResourceClaim is to be shared among multiple Pods or if the ResourceClaim is to be independent of a Pod's lifecycle then manually create the Resource Claim.
+
+Sample ResourceClaim:
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: shared-gpu-resourceclaim
+spec:
+  devices:
+    requests:
+    - name: single-gpu-claim
+      exactly:
+        deviceClassName: gpu.vendor.com
+        allocationMode: All
+        selectors:
+        - cel:
+            expression: |-
+              device.attributes["driver.example.com"].type == "gpu" &&
+              device.capacity["driver.example.com"].memory == quantity("64Gi")             
+```
+
 
 Module 1
 5 minutes - What is DRA
