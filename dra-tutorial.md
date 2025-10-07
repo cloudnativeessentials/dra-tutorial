@@ -105,6 +105,25 @@ Node-local kubelet plugin
 - makes node-local operations required to prepare a ReourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
 - pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
 
+2 Modes to communicate between Centralized Controller and kubelet-plugin
+- Single, all-purpose, per-node CRD
+  - kubelet plugin advertises available resources
+  - Controller tracks resources allocated
+  - kubelet-plugin tracks resources it prepared
+- Split-purpose Communication
+  - kubelet plugin advertises available resources via CRD that the controller can access
+  - Controller tracks allocated resources through ResourceHandle in ResourceClaim
+  - kubelet-plugin tracks resources in a checkpoint file on the local filesystem
+ 
+Modes of Allocating Resources with DRA (specified in the ResourceClaim)
+- Immediate
+  - More restrictive, resource availability is not considered
+  - Allocate resources immediately upon the creation of ResourceClaim
+  - Pods are restricted to those nodes with ResourceClaim (other resource availability is not considered in scheduling)
+- Delayed (wait for first consumer)
+  - Resource availability is considered in part of overall Pod scheduling
+  - Delays the allocation of the ResourceClaim until the first Pod that references it is scheduled
+
   
 
 ## DeviceClass
