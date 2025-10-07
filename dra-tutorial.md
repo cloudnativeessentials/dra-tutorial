@@ -74,7 +74,7 @@ Client Version: v1.34.1
 Kustomize Version: v5.7.1
 Server Version: v1.34.0
 ```
-DRA was stable in v1.34, previous versions require enabling DRA.
+DRA became stable in v1.34, previous versions require enabling DRA.
 
 Check the cluster's nodes:
 ```shell
