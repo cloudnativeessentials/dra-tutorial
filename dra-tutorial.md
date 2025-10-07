@@ -8,6 +8,14 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
+# Old way
+Node Feature Discovery
+GPU Feature Discovery
+Device Plugin
+Container Toolkit (on the host), shim on top of containerd or docker on top of runc, to handle GPU integration with device driver
+CUDA 
+Device Driver (from vendor e.g. AMD, NVIDIA, on the host)
+
 ## Module 1: Introduction to Dynamic Resource Allocation (DRA)
 Kubernetes 1.34 was released in August and the core components of DRA were promoted to stable / GA.
 Workloads need more than CPU and memory but also need specialized hardware.
@@ -80,7 +88,24 @@ kind-control-plane   Ready    control-plane   2m27s   v1.34.0
 kind-worker          Ready    <none>          2m14s   v1.34.0
 ```
 
-Let's look at the DRA resources 
+Before we look at the DRA resources, let's take a look at a generic DRA Resource Driver
+
+## DRA Resource Driver
+2 components that coordinate with each other
+- node-local kubelet plugin (DaemonSet) on nodes with the advertised device
+- centralized controller runing in HA
+
+Centralized Controller
+- coordinates with Kubernetes scheduler to decide which node a ResourceClaim can be serviced on
+- performs the actual Resource Claim allocation after a node is selected by the scheduler
+- performs deallocation of ResourceClaim once deleted
+
+Node-local kubelet plugin
+- advetise node-local state that the centralize controller needs to help make allocation decisions
+- makes node-local operations required to prepare a ReourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
+- pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
+
+  
 
 ## DeviceClass
 
