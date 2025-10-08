@@ -124,6 +124,8 @@ Modes of Allocating Resources with DRA (specified in the ResourceClaim)
   - Resource availability is considered in part of overall Pod scheduling
   - Delays the allocation of the ResourceClaim until the first Pod that references it is scheduled
 
+## ResourceSlice
+Represents the devices on the node.
   
 
 ## DeviceClass
