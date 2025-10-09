@@ -114,7 +114,10 @@ Node-local kubelet plugin
   - kubelet plugin advertises available resources via CRD that the controller can access
   - Controller tracks allocated resources through ResourceHandle in ResourceClaim
   - kubelet-plugin tracks resources in a checkpoint file on the local filesystem
- 
+
+Scheduling: in general, the Kubernetes scheduler and DRA driver controller communicate through the Kubernetes API server
+by updated a `PodSchedulingContext` object which leads to the allocation of the ResourceClaim and Pod to a Node with the available resource.
+
 Modes of Allocating Resources with DRA (specified in the ResourceClaim)
 - Immediate
   - More restrictive, resource availability is not considered
