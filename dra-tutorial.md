@@ -26,6 +26,17 @@ The previous way of accessing specialized hardware was with node plugins and had
 
 Node plugins are good for requesting single, linear quantity of resources.
 
+## DRA Overview
+Like with Device Plugin, you need a driver.
+The DRA driver (installed locally) has a component called the kubelet-plugin (typically a DaemonSet) that talks to the node's kubelet about the device and prepares the device to be used.
+
+The DRA driver publishes the available device in the form of a ResourceSlice object which is tied to the specific node where the DRA driver is installed -- so when a node goes down, the corresponding ResourceSlices will also be gone.
+
+A DeviceClass is similar to a StorageClass. A DeviceClass has device configuraitons and parameters that are used as selectors. A DeviceClass corresponds to a device driver and is installed by the cluster admin or provided by a vendor.
+
+When a Pod wants to use a device, the user creates a ResourceClaim or uses a ResourceClaimTemplate that references a DeviceClass.
+
+A cluster admin installs a corresponding DeviceClass that has device configuration and selectors for the device.
 
 ## Cluster setup
 
