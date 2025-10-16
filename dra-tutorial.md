@@ -32,7 +32,7 @@ The DRA driver (installed locally) has a component called the kubelet-plugin (ty
 
 The DRA driver publishes the available device in the form of a ResourceSlice object which is tied to the specific node where the DRA driver is installed -- so when a node goes down, the corresponding ResourceSlices will also be gone.
 
-A DeviceClass is similar to a StorageClass. A DeviceClass has device configurations and parameters that are used as selectors. A DeviceClass corresponds to a device driver and is installed by the cluster admin or provided by a vendor.
+A DeviceClass is similar to a StorageClass. A DeviceClass has device configurations and parameters that are used as selectors. A DeviceClass corresponds to a device driver and is installed by the cluster admin or created by the DRA driver.
 
 When a Pod wants to use a device, the user creates a ResourceClaim or uses a ResourceClaimTemplate that references a DeviceClass.
 
