@@ -8,7 +8,7 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
-# Old way
+## Old way (maybe don't include)
 Node Feature Discovery
 GPU Feature Discovery
 Device Plugin
@@ -17,7 +17,7 @@ CUDA
 Device Driver (from vendor e.g. AMD, NVIDIA, on the host)
 
 ## Module 1: Introduction to Dynamic Resource Allocation (DRA)
-Kubernetes 1.34 was released in August and the core components of DRA were promoted to stable / GA.
+Kubernetes 1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
 Workloads need more than CPU and memory but also need specialized hardware.
 DRA is a new API for Pods to request and access specialized hardware like accelerators or network-attached devices.
 Support for hardware are provided by vendors via DRA drivers.
