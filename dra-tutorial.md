@@ -2337,6 +2337,17 @@ spec:
 ---
 ```
 
+Create the DeviceClass for the example DRA driver:
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deviceclass.yaml
+```
+
+Output:
+```shell
+```
+
+## RBAC
 Before we deploy a DRA driver, let's deploy RBAC resources like the ServiceAccount, ClusterRole, ClusterRoleBinding
 
 ## Deploying a DRA Driver
