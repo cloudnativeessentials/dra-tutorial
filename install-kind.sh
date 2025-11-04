@@ -52,6 +52,10 @@ EOF
 # create kind cluster using kind-config.yaml
 sg docker -c 'kind create cluster --image=kindest/node:v1.34.0 --config=kind-config.yaml'
 
+# install helm
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
 #finish
 echo "kind cluster is ready"
 exit
+

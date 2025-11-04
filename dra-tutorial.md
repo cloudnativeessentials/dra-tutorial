@@ -8,6 +8,37 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
+
+Module 1 - Introduction to Dynamic Resource Allocation (15 minutes)
+5 minutes - What is DRA
+Motivation
+5 minutes - Difference between DRA and Device Plugin
+Benefits
+5 minutes - Explain why the change
+5 minutes - Cluster setup (kind on RHEL)
+
+Module 2 - DRA under the covers (15 minutes)
+5 minutes - Explain DRA under the covers
+5 minutes - Explore DRA Resources
+
+Module 3 - DRA Drivers (15 minutes)
+Intel Drivers
+NVIDIA Drivers
+DRANET
+
+Module 4 - Deploying Workloads that use DRA (15 minutes)
+5 minutes - Explore Workload YAML that uses DRA
+5 minutes - Run Workload YAML that uses DRA
+5 minutes - Confirm DRA uses
+
+Module 4
+5 minutes - Review benefits of DRA
+5 minutes - Explore YAML on how to use the different benefits of DRA
+Building a DRA driver?
+GPU examples?
+Look at Intel and NVIDIA?
+
+
 ## Old way (maybe don't include)
 Node Feature Discovery
 GPU Feature Discovery
@@ -17,7 +48,7 @@ CUDA
 Device Driver (from vendor e.g. AMD, NVIDIA, on the host)
 
 ## Module 1: Introduction to Dynamic Resource Allocation (DRA)
-Kubernetes 1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
+Kubernetes v1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
 Workloads need more than CPU and memory but also need specialized hardware.
 DRA is a new API for Pods to request and access specialized hardware like accelerators or network-attached devices.
 Support for hardware are provided by vendors via DRA drivers.
@@ -25,6 +56,10 @@ Support for hardware are provided by vendors via DRA drivers.
 The previous way of accessing specialized hardware was with node plugins and had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric.
 
 Node plugins are good for requesting single, linear quantity of resources.
+
+Let's take a look at a few vendor examples: NVIDIA and Intel
+NVIDIA offers DRA driers for two types of resources: GPUs and ComputeDomains.
+
 
 ## DRA Overview
 Like with Device Plugin, you need a driver.
@@ -50,27 +85,34 @@ There is a script that will install kind cluster with 1 control plane and 1 work
 
 Run the install script:
 ```shell
-curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind-cilium.sh | sh
+curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
 
 Output:
 
 ```shell
 This script installs Docker, kind, kubectl, and creates a kind cluster
-This will take several minutes to complete
-fs.inotify.max_user_watches = 524288
-fs.inotify.max_user_instances = 512
-sysctl fs.inotify.max_user_watches=524288
-sysctl fs.inotify.max_user_instances=512
+This will take several minutes to complete 
 Installing docker
 Updating Subscription Management repositories.
 Unable to read consumer identity
 ...
-Cluster Pods:          3/3 managed by Cilium
-Helm chart version:    1.18.0
-Image versions         cilium             quay.io/cilium/cilium:v1.18.0@sha256:dfea023972d06ec183cfa3c9e7809716f85daaff042e573ef366e9ec6a0c0ab2: 2
-                       cilium-envoy       quay.io/cilium/cilium-envoy:v1.34.4-1753677767-266d5a01d1d55bd1d60148f991b98dac0390d363@sha256:231b5bd9682dfc648ae97f33dcdc5225c5a526194dda08124f5eded833bf02bf: 2
-                       cilium-operator    quay.io/cilium/operator-generic:v1.18.0@sha256:398378b4507b6e9db22be2f4455d8f8e509b189470061b0f813f0fabaf944f51: 1
+
+kubectl: OK
+Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.34.0) 🖼 
+ ✓ Preparing nodes 📦 📦  
+ ✓ Writing configuration 📜 
+ ✓ Starting control-plane 🕹️ 
+ ✓ Installing CNI 🔌 
+ ✓ Installing StorageClass 💾 
+ ✓ Joining worker nodes 🚜 
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kind
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
 kind cluster is ready
 ```
 
@@ -85,7 +127,7 @@ Client Version: v1.34.1
 Kustomize Version: v5.7.1
 Server Version: v1.34.0
 ```
-DRA became stable in v1.34, previous versions require enabling DRA.
+DRA graduated to stable in v1.34 on August 27 2025.
 
 Check the cluster's nodes:
 ```shell
@@ -138,8 +180,93 @@ Modes of Allocating Resources with DRA (specified in the ResourceClaim)
   - Resource availability is considered in part of overall Pod scheduling
   - Delays the allocation of the ResourceClaim until the first Pod that references it is scheduled
 
+## Overview
+DRA Driver
+- typically installed as a DaemonSet and may use node affinity to schedule DaemonSets appropriately
+e.g. feature.node.kubernetes.io/pci-10de.present=true or feature.node.kubernetes.io/cpu-model.vendor_id=NVIDIA  or nvidia.com/gpu.present=true
+
+The DRA Driver has two main components:
+dra-controller: manages resource allocation requests 
+dra-kubelet-plugin: handles resource allocation on the node 
+
+ResourceSlice: created by the DRA driver, tied to the node, represents devices represented by the driver on the node 
+
+DeviceClass: defines category of devices e.g. gpu.nvidia.com
+
+ResourceClaim: request for specific devices from a DeviceClass
+Can be referenced by multiple Pods if the device can be shared and not tied to any Pod's lifecycle
+
+ResourceClaimTemplate: template to generate resource claim. When a ResourceClaim is created from a ResourceClaimTemplate, it is tied to the Pod's lifecycle
+
+
+
 ## ResourceSlice
-Represents the devices on the node.
+Represents the available devices represented by a driver on the node.
+The DRA driver creates the ResourceSlice.
+The Kubernetes scheduler uses ResourceSlices to determine where to allocate Pods.
+
+```shell
+kubectl explain resourceslice
+```
+
+Output:
+```shell
+GROUP:      resource.k8s.io
+KIND:       ResourceSlice
+VERSION:    v1
+
+DESCRIPTION:
+    ResourceSlice represents one or more resources in a pool of similar
+    resources, managed by a common driver. A pool may span more than one
+    ResourceSlice, and exactly how many ResourceSlices comprise a pool is
+    determined by the driver.
+    
+    At the moment, the only supported resources are devices with attributes and
+    capacities. Each device in a given pool, regardless of how many
+    ResourceSlices, must have a unique name. The ResourceSlice in which a device
+    gets published may change over time. The unique identifier for a device is
+    the tuple <driver name>, <pool name>, <device name>.
+    
+    Whenever a driver needs to update a pool, it increments the
+    pool.Spec.Pool.Generation number and updates all ResourceSlices with that
+    new number and new resource definitions. A consumer must only use
+    ResourceSlices with the highest generation number and ignore all others.
+    
+    When allocating all resources in a pool matching certain criteria or when
+    looking for the best solution among several different alternatives, a
+    consumer should check the number of ResourceSlices in a pool (included in
+    each ResourceSlice) to determine whether its view of a pool is complete and
+    if not, should wait until the driver has completed updating the pool.
+    
+    For resources that are not local to a node, the node name is not set.
+    Instead, the driver may use a node selector to specify where the devices are
+    available.
+    
+    This is an alpha type and requires enabling the DynamicResourceAllocation
+    feature gate.
+    
+FIELDS:
+  apiVersion	<string>
+    APIVersion defines the versioned schema of this representation of an object.
+    Servers should convert recognized schemas to the latest internal value, and
+    may reject unrecognized values. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+  kind	<string>
+    Kind is a string value representing the REST resource this object
+    represents. Servers may infer this from the endpoint the client submits
+    requests to. Cannot be updated. In CamelCase. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+  metadata	<ObjectMeta>
+    Standard object metadata
+
+  spec	<ResourceSliceSpec> -required-
+    Contains the information published by the driver.
+    
+    Changing the spec automatically increments the metadata.generation number.
+
+```
   
 
 ## DeviceClass
@@ -285,94 +412,1842 @@ spec:
               device.capacity["driver.example.com"].memory == quantity("64Gi")             
 ```
 
-## ResourceSlice
+## NVIDIA DRA Driver
+The NVIDIA DRA Driver is installed via a helm chart
+Add the NVDIA helm repository
 
 ```shell
-kubectl describe resourceslice
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
 ```
 
 Output:
-
 ```shell
-GROUP:      resource.k8s.io
-KIND:       ResourceSlice
-VERSION:    v1
+"nvidia" has been added to your repositories
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "nvidia" chart repository
+Update Complete. ⎈Happy Helming!⎈
 
-DESCRIPTION:
-    ResourceSlice represents one or more resources in a pool of similar
-    resources, managed by a common driver. A pool may span more than one
-    ResourceSlice, and exactly how many ResourceSlices comprise a pool is
-    determined by the driver.
-    
-    At the moment, the only supported resources are devices with attributes and
-    capacities. Each device in a given pool, regardless of how many
-    ResourceSlices, must have a unique name. The ResourceSlice in which a device
-    gets published may change over time. The unique identifier for a device is
-    the tuple <driver name>, <pool name>, <device name>.
-    
-    Whenever a driver needs to update a pool, it increments the
-    pool.Spec.Pool.Generation number and updates all ResourceSlices with that
-    new number and new resource definitions. A consumer must only use
-    ResourceSlices with the highest generation number and ignore all others.
-    
-    When allocating all resources in a pool matching certain criteria or when
-    looking for the best solution among several different alternatives, a
-    consumer should check the number of ResourceSlices in a pool (included in
-    each ResourceSlice) to determine whether its view of a pool is complete and
-    if not, should wait until the driver has completed updating the pool.
-    
-    For resources that are not local to a node, the node name is not set.
-    Instead, the driver may use a node selector to specify where the devices are
-    available.
-    
-    This is an alpha type and requires enabling the DynamicResourceAllocation
-    feature gate.
-    
-FIELDS:
-  apiVersion	<string>
-    APIVersion defines the versioned schema of this representation of an object.
-    Servers should convert recognized schemas to the latest internal value, and
-    may reject unrecognized values. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-
-  kind	<string>
-    Kind is a string value representing the REST resource this object
-    represents. Servers may infer this from the endpoint the client submits
-    requests to. Cannot be updated. In CamelCase. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-
-  metadata	<ObjectMeta>
-    Standard object metadata
-
-  spec	<ResourceSliceSpec> -required-
-    Contains the information published by the driver.
-    
-    Changing the spec automatically increments the metadata.generation number.
 ```
 
+Let's confirm the chart:
+```shell
+helm show chart nvidia/nvidia-dra-driver-gpu
+```
 
-Module 1
-5 minutes - What is DRA
-Motivation
-Benefits
-5 minutes - Cluster setup (kind on RHEL)
+Output:
+```shell
+apiVersion: v2
+appVersion: 25.8.0
+description: Official Helm chart for the NVIDIA DRA Driver for GPUs
+kubeVersion: '>=1.32.0-0'
+name: nvidia-dra-driver-gpu
+type: application
+version: 25.8.0
+```
 
-Module 2
-5 minutes - Difference between DRA and Device Plugin
-5 minutes - Explain why the change
+Let's look at the install confirmation parameters:
+```shell
+helm show values nvidia/nvidia-dra-driver-gpu
+```
 
-Module 3
-5 minutes - Explain DRA under the covers
-5 minutes - Explore DRA Resources
+Output:
+```shell
+# Copyright 2023 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-Module 4
-5 minutes - Explore Workload YAML that uses DRA
-5 minutes - Run Workload YAML that uses DRA
-5 minutes - Confirm DRA uses
+# Default values for k8s-dra-driver-gpu.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
 
-Module 5
-5 minutes - Review benefits of DRA
-5 minutes - Explore YAML on how to use the different benefits of DRA
-Building a DRA driver?
-GPU examples?
-Look at Intel and NVIDIA?
+# Specify the driver root on the host.
+# If the NVIDIA GPU driver is managed using the NVIDIA GPU Driver Container,
+# this is typically /run/nvidia/driver.
+# For driver installed directly on a host, a value of `/` is used.
+nvidiaDriverRoot: /
+
+# Optional path to the nvidia-cdi-hook executable.
+# If not specified, the default path inferred from the nvidia-container-toolkit library version will be used.
+nvidiaCDIHookPath: ""
+
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+selectorLabelsOverride: {}
+gpuResourcesEnabledOverride: false
+
+allowDefaultNamespace: false
+
+imagePullSecrets: []
+image:
+  repository: nvcr.io/nvidia/k8s-dra-driver-gpu
+  pullPolicy: IfNotPresent
+  # Note: an empty string is translated to the `appVersion` string from
+  # the Helm chart YAML (effectively implementing the default value to be
+  # the current version). Also note that a "v" is prefixed to the
+  # `appVersion` value.
+  tag: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+resources:
+  gpus:
+    enabled: true
+  computeDomains:
+    enabled: true
+
+# Feature gates configuration following Kubernetes patterns
+# Configure feature gates as key-value pairs (feature_name: true/false)
+# Examples:
+# featureGates:
+#   ExampleFeature: false              # Project-specific alpha feature
+#   ContextualLogging: true            # Kubernetes logging feature (enabled by default)
+#   LoggingAlphaOptions: false         # Kubernetes logging alpha features
+#   LoggingBetaOptions: true           # Kubernetes logging beta features
+featureGates: {}
+
+# Log verbosity for all components. Zero or greater, higher number means higher
+# verbosity. Regardless of this setting, messages of type Error, Warning, and
+# Info(level 0) are always logged. Can also be set for individual components via
+# environment variable (that takes precedence), see
+# https://github.com/NVIDIA/k8s-dra-driver-gpu/wiki/Troubleshooting#controlling-log-verbosity
+#
+# An (incomplete) representation of which types of messages to expect with
+# increasing verbosity level:
+#
+# Level 0:
+# - Configuration detail (during process startup)
+# - Kubelet plugins:
+#   - Permanent errors during device Prepare() and Unprepare()
+#
+# Level 1:
+# - CD controller:
+#   - Confirm cleanup of stale objects
+# - k8s client-go: feature gates
+# - Kubelet plugins:
+#   - Device (un)prepare confirmation, with resource claim UID
+#   - Workqueue reconciliation failures (noisy: mainly expected, retryable
+#     errors)
+# - CD daemon:
+#   - explicit 'wait for nodes update'
+#
+# Level 2:
+# - reflector.go informer state: "Caches populated"
+# - Kubelet plugins:
+#   - Acknowledge when Unprepare is a noop
+# - CD controller:
+#   - Added/updated API object callback confirmation
+#
+# Level 3:
+# - reflector.go informer state: "Listing and watching"
+#
+# Level 6:
+# - round_trippers.go output (API server request/response detail)
+# - Kubelet plugins:
+#   - GRPC request/response detail
+#   - Checkpoint file update confirmation
+# - CD daemon:
+#   - explicit 'IP set did not change'
+#
+# Level 7:
+# - Kubelet plugins:
+#   - Health check
+logVerbosity: "4"
+
+# Webhook configuration
+webhook:
+  enabled: false
+  replicas: 1
+  servicePort: 443
+  containerPort: 443
+  priorityClassName: "system-cluster-critical"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "100%"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  containers:
+    webhook:
+      securityContext:
+        privileged: false
+      resources: {}
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    name: ""
+  # failurePolicy defines how the API server should handle requests if the webhook call fails.
+  # Options:
+  #   - Fail   : reject the request if the webhook call fails either due to cert errors, timeout or if the service is unreachable.
+  #   - Ignore : allow the request to continue if the webhook call fails.
+  failurePolicy: Fail
+  # TLS certificate configuration
+  tls:
+    # Certificate management mode: "cert-manager" or "secret"
+    # - "cert-manager": Use cert-manager to automatically generate and manage certificates
+    # - "secret": Use a user-provided secret containing tls.crt and tls.key
+    mode: "cert-manager"
+    certManager:
+      # Issuer type: "selfsigned", "clusterissuer", or "issuer"
+      issuerType: "selfsigned"
+      # Issuer name (required when issuerType is "clusterissuer" or "issuer")
+      issuerName: ""
+      # Additional DNS names for the certificate
+      dnsNames: []
+    secret:
+      # Name of the secret containing tls.crt and tls.key
+      name: ""
+      # Base64-encoded CA certificate bundle for validating the webhook's TLS certificate (base64 encoded)
+      # Required when using secret mode.
+      # Note: Only include intermediate CA certificates, not root CA certificates
+      caBundle: ""
+
+controller:
+  priorityClassName: "system-node-critical"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  containers:
+    computeDomain:
+      securityContext: {}
+      env: []
+      resources: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: "Exists"
+
+kubeletPlugin:
+  priorityClassName: "system-node-critical"
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "100%"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  kubeletRegistrarDirectoryPath: /var/lib/kubelet/plugins_registry
+  kubeletPluginsDirectoryPath: /var/lib/kubelet/plugins
+  containers:
+    init:
+      securityContext: {}
+      resources: {}
+    computeDomains:
+      env: []
+      securityContext:
+        privileged: true
+      resources: {}
+      # Port running a gRPC health service checked by a livenessProbe.
+      # Set to a negative value to disable the service and the probe.
+      healthcheckPort: 51515
+    gpus:
+      env: []
+      securityContext:
+        privileged: true
+      resources: {}
+      # Port running a gRPC health service checked by a livenessProbe.
+      # Set to a negative value to disable the service and the probe.
+      healthcheckPort: 51516
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          # On discrete-GPU based systems NFD adds the following label where 10de is the NVIDIA PCI vendor ID
+          - key: feature.node.kubernetes.io/pci-10de.present
+            operator: In
+            values:
+            - "true"
+        - matchExpressions:
+          # On some Tegra-based systems NFD detects the CPU vendor ID as NVIDIA
+          - key: feature.node.kubernetes.io/cpu-model.vendor_id
+            operator: In
+            values:
+            - "NVIDIA"
+        - matchExpressions:
+          # We allow a GPU deployment to be forced by setting the following label to "true"
+          - key: "nvidia.com/gpu.present"
+            operator: In
+            values:
+            - "true"
+```
+
+Let's look at all the information from the chart:
+
+```shell
+helm show all nvidia/nvidia-dra-driver-gpu
+```
+
+Output:
+```
+apiVersion: v2
+appVersion: 25.8.0
+description: Official Helm chart for the NVIDIA DRA Driver for GPUs
+kubeVersion: '>=1.32.0-0'
+name: nvidia-dra-driver-gpu
+type: application
+version: 25.8.0
+
+---
+# Copyright 2023 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for k8s-dra-driver-gpu.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Specify the driver root on the host.
+# If the NVIDIA GPU driver is managed using the NVIDIA GPU Driver Container,
+# this is typically /run/nvidia/driver.
+# For driver installed directly on a host, a value of `/` is used.
+nvidiaDriverRoot: /
+
+# Optional path to the nvidia-cdi-hook executable.
+# If not specified, the default path inferred from the nvidia-container-toolkit library version will be used.
+nvidiaCDIHookPath: ""
+
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+selectorLabelsOverride: {}
+gpuResourcesEnabledOverride: false
+
+allowDefaultNamespace: false
+
+imagePullSecrets: []
+image:
+  repository: nvcr.io/nvidia/k8s-dra-driver-gpu
+  pullPolicy: IfNotPresent
+  # Note: an empty string is translated to the `appVersion` string from
+  # the Helm chart YAML (effectively implementing the default value to be
+  # the current version). Also note that a "v" is prefixed to the
+  # `appVersion` value.
+  tag: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+resources:
+  gpus:
+    enabled: true
+  computeDomains:
+    enabled: true
+
+# Feature gates configuration following Kubernetes patterns
+# Configure feature gates as key-value pairs (feature_name: true/false)
+# Examples:
+# featureGates:
+#   ExampleFeature: false              # Project-specific alpha feature
+#   ContextualLogging: true            # Kubernetes logging feature (enabled by default)
+#   LoggingAlphaOptions: false         # Kubernetes logging alpha features
+#   LoggingBetaOptions: true           # Kubernetes logging beta features
+featureGates: {}
+
+# Log verbosity for all components. Zero or greater, higher number means higher
+# verbosity. Regardless of this setting, messages of type Error, Warning, and
+# Info(level 0) are always logged. Can also be set for individual components via
+# environment variable (that takes precedence), see
+# https://github.com/NVIDIA/k8s-dra-driver-gpu/wiki/Troubleshooting#controlling-log-verbosity
+#
+# An (incomplete) representation of which types of messages to expect with
+# increasing verbosity level:
+#
+# Level 0:
+# - Configuration detail (during process startup)
+# - Kubelet plugins:
+#   - Permanent errors during device Prepare() and Unprepare()
+#
+# Level 1:
+# - CD controller:
+#   - Confirm cleanup of stale objects
+# - k8s client-go: feature gates
+# - Kubelet plugins:
+#   - Device (un)prepare confirmation, with resource claim UID
+#   - Workqueue reconciliation failures (noisy: mainly expected, retryable
+#     errors)
+# - CD daemon:
+#   - explicit 'wait for nodes update'
+#
+# Level 2:
+# - reflector.go informer state: "Caches populated"
+# - Kubelet plugins:
+#   - Acknowledge when Unprepare is a noop
+# - CD controller:
+#   - Added/updated API object callback confirmation
+#
+# Level 3:
+# - reflector.go informer state: "Listing and watching"
+#
+# Level 6:
+# - round_trippers.go output (API server request/response detail)
+# - Kubelet plugins:
+#   - GRPC request/response detail
+#   - Checkpoint file update confirmation
+# - CD daemon:
+#   - explicit 'IP set did not change'
+#
+# Level 7:
+# - Kubelet plugins:
+#   - Health check
+logVerbosity: "4"
+
+# Webhook configuration
+webhook:
+  enabled: false
+  replicas: 1
+  servicePort: 443
+  containerPort: 443
+  priorityClassName: "system-cluster-critical"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "100%"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  containers:
+    webhook:
+      securityContext:
+        privileged: false
+      resources: {}
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    name: ""
+  # failurePolicy defines how the API server should handle requests if the webhook call fails.
+  # Options:
+  #   - Fail   : reject the request if the webhook call fails either due to cert errors, timeout or if the service is unreachable.
+  #   - Ignore : allow the request to continue if the webhook call fails.
+  failurePolicy: Fail
+  # TLS certificate configuration
+  tls:
+    # Certificate management mode: "cert-manager" or "secret"
+    # - "cert-manager": Use cert-manager to automatically generate and manage certificates
+    # - "secret": Use a user-provided secret containing tls.crt and tls.key
+    mode: "cert-manager"
+    certManager:
+      # Issuer type: "selfsigned", "clusterissuer", or "issuer"
+      issuerType: "selfsigned"
+      # Issuer name (required when issuerType is "clusterissuer" or "issuer")
+      issuerName: ""
+      # Additional DNS names for the certificate
+      dnsNames: []
+    secret:
+      # Name of the secret containing tls.crt and tls.key
+      name: ""
+      # Base64-encoded CA certificate bundle for validating the webhook's TLS certificate (base64 encoded)
+      # Required when using secret mode.
+      # Note: Only include intermediate CA certificates, not root CA certificates
+      caBundle: ""
+
+controller:
+  priorityClassName: "system-node-critical"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  containers:
+    computeDomain:
+      securityContext: {}
+      env: []
+      resources: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: "Exists"
+
+kubeletPlugin:
+  priorityClassName: "system-node-critical"
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "100%"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  kubeletRegistrarDirectoryPath: /var/lib/kubelet/plugins_registry
+  kubeletPluginsDirectoryPath: /var/lib/kubelet/plugins
+  containers:
+    init:
+      securityContext: {}
+      resources: {}
+    computeDomains:
+      env: []
+      securityContext:
+        privileged: true
+      resources: {}
+      # Port running a gRPC health service checked by a livenessProbe.
+      # Set to a negative value to disable the service and the probe.
+      healthcheckPort: 51515
+    gpus:
+      env: []
+      securityContext:
+        privileged: true
+      resources: {}
+      # Port running a gRPC health service checked by a livenessProbe.
+      # Set to a negative value to disable the service and the probe.
+      healthcheckPort: 51516
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          # On discrete-GPU based systems NFD adds the following label where 10de is the NVIDIA PCI vendor ID
+          - key: feature.node.kubernetes.io/pci-10de.present
+            operator: In
+            values:
+            - "true"
+        - matchExpressions:
+          # On some Tegra-based systems NFD detects the CPU vendor ID as NVIDIA
+          - key: feature.node.kubernetes.io/cpu-model.vendor_id
+            operator: In
+            values:
+            - "NVIDIA"
+        - matchExpressions:
+          # We allow a GPU deployment to be forced by setting the following label to "true"
+          - key: "nvidia.com/gpu.present"
+            operator: In
+            values:
+            - "true"
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.1
+  name: computedomains.resource.nvidia.com
+spec:
+  group: resource.nvidia.com
+  names:
+    kind: ComputeDomain
+    listKind: ComputeDomainList
+    plural: computedomains
+    singular: computedomain
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: ComputeDomain prepares a set of nodes to run a multi-node workload
+          in.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ComputeDomainSpec provides the spec for a ComputeDomain.
+            properties:
+              channel:
+                description: ComputeDomainChannelSpec provides the spec for a channel
+                  used to run a workload inside a ComputeDomain.
+                properties:
+                  allocationMode:
+                    default: Single
+                    description: |-
+                      Allows for requesting all IMEX channels (the maximum per IMEX domain) or
+                      precisely one.
+                    enum:
+                    - All
+                    - Single
+                    type: string
+                  resourceClaimTemplate:
+                    description: ComputeDomainResourceClaimTemplate provides the details
+                      of the ResourceClaimTemplate to generate.
+                    properties:
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                required:
+                - resourceClaimTemplate
+                type: object
+              numNodes:
+                description: |-
+                  Intended number of IMEX daemons (i.e., individual compute nodes) in the
+                  ComputeDomain. Must be zero or greater.
+
+                  With `featureGates.IMEXDaemonsWithDNSNames=true` (the default), this is
+                  recommended to be set to zero. Workload must implement and consult its
+                  own source of truth for the number of workers online before trying to
+                  share GPU memory (and hence triggering IMEX interaction). When non-zero,
+                  `numNodes` is used only for automatically updating the global
+                  ComputeDomain `Status` (indicating `Ready` when the number of ready IMEX
+                  daemons equals `numNodes`). In this mode, a `numNodes` value greater than
+                  zero in particular does not gate the startup of IMEX daemons: individual
+                  IMEX daemons are started immediately without waiting for its peers, and
+                  any workload pod gets released right after its local IMEX daemon has
+                  started.
+
+                  With `featureGates.IMEXDaemonsWithDNSNames=false`, `numNodes` must be set
+                  to the expected number of worker nodes joining the ComputeDomain. In that
+                  mode, all workload pods are held back (with containers in state
+                  `ContainerCreating`) until the underlying IMEX domain has been joined by
+                  `numNodes` IMEX daemons. Pods from more than `numNodes` nodes trying to
+                  join the ComputeDomain may lead to unexpected behavior.
+
+                  The `numNodes` parameter is deprecated and will be removed in the next
+                  API version.
+                type: integer
+            required:
+            - channel
+            - numNodes
+            type: object
+            x-kubernetes-validations:
+            - message: A computeDomain.spec is immutable
+              rule: self == oldSelf
+          status:
+            description: |-
+              Global ComputeDomain status. Can be used to guide debugging efforts.
+              Workload however should not rely on inspecting this field at any point
+              during its lifecycle.
+            properties:
+              nodes:
+                items:
+                  description: ComputeDomainNode provides information about each node
+                    added to a ComputeDomain.
+                  properties:
+                    cliqueID:
+                      type: string
+                    index:
+                      description: |-
+                        The Index field is used to ensure a consistent IP-to-DNS name
+                        mapping across all machines within an IMEX domain. Each node's index
+                        directly determines its DNS name within a given NVLink partition
+                        (i.e. clique). In other words, the 2-tuple of (CliqueID, Index) will
+                        always be unique. This field is marked as optional (but not
+                        omitempty) in order to support downgrades and avoid an API bump.
+                      type: integer
+                    ipAddress:
+                      type: string
+                    name:
+                      type: string
+                    status:
+                      default: NotReady
+                      description: |-
+                        The Status field tracks the readiness of the IMEX daemon running on
+                        this node. It gets switched to Ready whenever the IMEX daemon is
+                        ready to broker GPU memory exchanges and switches to NotReady when
+                        it is not. It is marked as optional in order to support downgrades
+                        and avoid an API bump.
+                      enum:
+                      - Ready
+                      - NotReady
+                      type: string
+                  required:
+                  - cliqueID
+                  - ipAddress
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              status:
+                default: NotReady
+                enum:
+                - Ready
+                - NotReady
+                type: string
+            required:
+            - status
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+```
+
+As we reviewed, the DRA driver is made up of 2 components: controller and a kubelet plugin.
+Let's take a look at the NVIDIA DRA driver's controller:
+
+```shell
+helm show all nvidia/nvidia-dra-driver-gpu | grep -A 21 "controller:" 
+```
+
+Output:
+```
+# - CD controller:
+#   - Confirm cleanup of stale objects
+# - k8s client-go: feature gates
+# - Kubelet plugins:
+#   - Device (un)prepare confirmation, with resource claim UID
+#   - Workqueue reconciliation failures (noisy: mainly expected, retryable
+#     errors)
+# - CD daemon:
+#   - explicit 'wait for nodes update'
+#
+# Level 2:
+# - reflector.go informer state: "Caches populated"
+# - Kubelet plugins:
+#   - Acknowledge when Unprepare is a noop
+# - CD controller:
+#   - Added/updated API object callback confirmation
+#
+# Level 3:
+# - reflector.go informer state: "Listing and watching"
+#
+# Level 6:
+# - round_trippers.go output (API server request/response detail)
+# - Kubelet plugins:
+#   - GRPC request/response detail
+#   - Checkpoint file update confirmation
+# - CD daemon:
+#   - explicit 'IP set did not change'
+#
+# Level 7:
+# - Kubelet plugins:
+#   - Health check
+logVerbosity: "4"
+
+# Webhook configuration
+webhook:
+  enabled: false
+--
+controller:
+  priorityClassName: "system-node-critical"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  containers:
+    computeDomain:
+      securityContext: {}
+      env: []
+      resources: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: "Exists"
+```
+
+Now let's take a lok at the NVIDIA DRA driver's kubelet plugin:
+
+```shell
+helm show all nvidia/nvidia-dra-driver-gpu | grep -A 19 "kubeletPlugin:" 
+```
+
+Output:
+```shell
+kubeletPlugin:
+  priorityClassName: "system-node-critical"
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "100%"
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  kubeletRegistrarDirectoryPath: /var/lib/kubelet/plugins_registry
+  kubeletPluginsDirectoryPath: /var/lib/kubelet/plugins
+  containers:
+    init:
+      securityContext: {}
+      resources: {}
+    computeDomains:
+      env: []
+      securityContext:
+        privileged: true
+```
+
+To install the NVIDIA DRA driver, we would do a `helm install`. 
+Let's do a dry-run to simulate the Helm chart install:
+
+```shell
+helm install --dry-run nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
+    --create-namespace \
+    --namespace nvidia-dra-driver-gpu \
+    --set resources.gpus.enabled=false \
+    --set nvidiaDriverRoot=/run/nvidia/driver
+```
+The command above uses an operator-provided GPU driver, for host-provided GPU drivers use the `--set resources.gpus.enabled=false` option
+
+Output:
+```shell
+NAME: nvidia-dra-driver-gpu
+LAST DEPLOYED: Tue Nov  4 04:05:56 2025
+NAMESPACE: nvidia-dra-driver-gpu
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-compute-domain-daemon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: compute-domain-daemon-service-account
+  namespace: nvidia-dra-driver-gpu
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-controller.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvidia-dra-driver-gpu-service-account-controller
+  namespace: nvidia-dra-driver-gpu
+  labels:
+    helm.sh/chart: nvidia-dra-driver-gpu-25.8.0
+    app.kubernetes.io/version: "25.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nvidia-dra-driver-gpu
+    app.kubernetes.io/instance: nvidia-dra-driver-gpu
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-kubeletplugin.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvidia-dra-driver-gpu-service-account-kubeletplugin
+  namespace: nvidia-dra-driver-gpu
+  labels:
+    helm.sh/chart: nvidia-dra-driver-gpu-25.8.0
+    app.kubernetes.io/version: "25.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nvidia-dra-driver-gpu
+    app.kubernetes.io/instance: nvidia-dra-driver-gpu
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-compute-domain-daemon.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: compute-domain-daemon-role
+rules:
+- apiGroups: ["resource.nvidia.com"]
+  resources: ["computedomains", "computedomains/status"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-controller.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nvidia-dra-driver-gpu-clusterrole-controller
+rules:
+- apiGroups: ["resource.nvidia.com"]
+  resources: ["computedomains"]
+  verbs: ["get", "list", "watch", "update"]
+- apiGroups: ["resource.nvidia.com"]
+  resources: ["computedomains/status"]
+  verbs: ["update"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclaimtemplates"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch", "update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-kubeletplugin.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nvidia-dra-driver-gpu-clusterrole-kubeletplugin
+rules:
+- apiGroups: ["resource.nvidia.com"]
+  resources: ["computedomains"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclaims"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceslices"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch", "update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-compute-domain-daemon.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: compute-domain-daemon-role-binding-nvidia-dra-driver-gpu
+subjects:
+- kind: ServiceAccount
+  name: compute-domain-daemon-service-account
+  namespace: nvidia-dra-driver-gpu
+roleRef:
+  kind: ClusterRole
+  name: compute-domain-daemon-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-controller.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nvidia-dra-driver-gpu-clusterrole-binding-controller-nvidia-dra-driver-gpu
+subjects:
+  - kind: ServiceAccount
+    name: nvidia-dra-driver-gpu-service-account-controller
+    namespace: nvidia-dra-driver-gpu
+roleRef:
+  kind: ClusterRole
+  name: nvidia-dra-driver-gpu-clusterrole-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-kubeletplugin.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nvidia-dra-driver-gpu-clusterrole-binding-kubeletplugin-nvidia-dra-driver-gpu
+subjects:
+  - kind: ServiceAccount
+    name: nvidia-dra-driver-gpu-service-account-kubeletplugin
+    namespace: nvidia-dra-driver-gpu
+roleRef:
+  kind: ClusterRole
+  name: nvidia-dra-driver-gpu-clusterrole-kubeletplugin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-controller.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nvidia-dra-driver-gpu-role-controller
+  namespace: nvidia-dra-driver-gpu
+rules:
+- apiGroups: ["apps"]
+  resources: ["daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-kubeletplugin.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nvidia-dra-driver-gpu-role-kubeletplugin
+  namespace: nvidia-dra-driver-gpu
+rules:
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-controller.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nvidia-dra-driver-gpu-role-binding-controller
+  namespace: nvidia-dra-driver-gpu
+subjects:
+  - kind: ServiceAccount
+    name: nvidia-dra-driver-gpu-service-account-controller
+    namespace: nvidia-dra-driver-gpu
+roleRef:
+  kind: Role
+  name: nvidia-dra-driver-gpu-role-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: nvidia-dra-driver-gpu/templates/rbac-kubeletplugin.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nvidia-dra-driver-gpu-role-binding-kubeletplugin
+  namespace: nvidia-dra-driver-gpu
+subjects:
+  - kind: ServiceAccount
+    name: nvidia-dra-driver-gpu-service-account-kubeletplugin
+    namespace: nvidia-dra-driver-gpu
+roleRef:
+  kind: Role
+  name: nvidia-dra-driver-gpu-role-kubeletplugin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: nvidia-dra-driver-gpu/templates/kubeletplugin.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-dra-driver-gpu-kubelet-plugin
+  namespace: nvidia-dra-driver-gpu
+  labels:
+    helm.sh/chart: nvidia-dra-driver-gpu-25.8.0
+    app.kubernetes.io/version: "25.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nvidia-dra-driver-gpu
+    app.kubernetes.io/instance: nvidia-dra-driver-gpu
+spec:
+  selector:
+    matchLabels:
+      nvidia-dra-driver-gpu-component: kubelet-plugin
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 100%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-dra-driver-gpu
+        app.kubernetes.io/instance: nvidia-dra-driver-gpu
+        nvidia-dra-driver-gpu-component: kubelet-plugin
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: nvidia-dra-driver-gpu-service-account-kubeletplugin
+      securityContext:
+        {}
+      initContainers:
+      - name: init-container
+        image: nvcr.io/nvidia/k8s-dra-driver-gpu:v25.8.0
+        securityContext:
+          privileged: true
+        command: [bash, /usr/bin/kubelet-plugin-prestart.sh]
+        env:
+        - name: NVIDIA_DRIVER_ROOT
+          value: "/run/nvidia/driver"
+        # Use runc: explicit "void"; otherwise we inherit "all".
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: void
+        - name: KUBELET_REGISTRAR_DIRECTORY_PATH
+          value: "/var/lib/kubelet/plugins_registry"
+        - name: KUBELET_PLUGINS_DIRECTORY_PATH
+          value: "/var/lib/kubelet/plugins"
+        volumeMounts:
+        - name: driver-root-parent
+          mountPath: /driver-root-parent
+          # In case of the operator-provided driver, another container mounts
+          # the driver onto the host using `mountPropagation: Bidirectional`
+          # (out-of-band of the lifecycle of _this_ pod here). For us to see
+          # that mount, `mountPropagation: HostToContainer` is required (docs:
+          # "if any Pod with Bidirectional mount propagation to the same volume
+          # mounts anything there, the container with HostToContainer mount
+          # propagation will see it.").
+          mountPropagation: HostToContainer
+      containers:
+      - name: compute-domains
+        securityContext:
+          privileged: true
+        image: nvcr.io/nvidia/k8s-dra-driver-gpu:v25.8.0
+        imagePullPolicy: IfNotPresent
+        command: ["bash", "-c"]
+        args:
+        - |-
+          # Conditionally mask the params file to prevent this container from
+          # recreating any missing GPU device nodes. This is necessary, for
+          # example, when running under nvkind to limit the set GPUs governed
+          # by the plugin even though it has cgroup access to all of them.
+          if [ "${MASK_NVIDIA_DRIVER_PARAMS}" = "true" ]; then
+            cp /proc/driver/nvidia/params root/gpu-params
+            sed -i 's/^ModifyDeviceFiles: 1$/ModifyDeviceFiles: 0/' root/gpu-params
+            mount --bind root/gpu-params /proc/driver/nvidia/params
+          fi
+          compute-domain-kubelet-plugin -v $(LOG_VERBOSITY)
+        resources:
+          {}
+        
+        livenessProbe:
+          grpc:
+            port: 51515
+            service: liveness
+          failureThreshold: 3
+          periodSeconds: 10
+        env:
+        # LOG_VERBOSITY is the source of truth for this program's klog
+        # configuration. Currently injected via CLI argument (see above) because
+        # klog's verbosity for now cannot be sanely set from an environment
+        # variable.
+        - name: LOG_VERBOSITY
+          value: "4"
+        - name: MASK_NVIDIA_DRIVER_PARAMS
+          value: ""
+        - name: NVIDIA_DRIVER_ROOT
+          value: "/run/nvidia/driver"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: void
+        - name: CDI_ROOT
+          value: /var/run/cdi
+        - name: NVIDIA_MIG_CONFIG_DEVICES
+          value: all
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: KUBELET_REGISTRAR_DIRECTORY_PATH
+          value: "/var/lib/kubelet/plugins_registry"
+        - name: KUBELET_PLUGINS_DIRECTORY_PATH
+          value: "/var/lib/kubelet/plugins"
+        - name: HEALTHCHECK_PORT
+          value: "51515"
+        volumeMounts:
+        - name: plugins-registry
+          mountPath: "/var/lib/kubelet/plugins_registry"
+        - name: plugins
+          mountPath: "/var/lib/kubelet/plugins"
+          mountPropagation: Bidirectional
+        - name: cdi
+          mountPath: /var/run/cdi
+        - name: driver-root
+          mountPath: /driver-root
+          readOnly: true
+          mountPropagation: HostToContainer
+      volumes:
+      - name: plugins-registry
+        hostPath:
+          path: "/var/lib/kubelet/plugins_registry"
+      - name: plugins
+        hostPath:
+          path: "/var/lib/kubelet/plugins"
+      - name: cdi
+        hostPath:
+          path: /var/run/cdi
+      - name: driver-root-parent
+        hostPath:
+          # If nvidiaDriverRoot == "/" then its parent is itself. Otherwise, get
+          # its parent by removing any trailing slashes as well as the last path
+          # element with sprig template function `dir`. Examples: /a/b/ -> /a,
+          # /a/b/c -> /a/b.
+          path: /run/nvidia
+          type: DirectoryOrCreate
+      - name: driver-root
+        hostPath:
+          path: /run/nvidia/driver
+          type: DirectoryOrCreate
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: feature.node.kubernetes.io/pci-10de.present
+                operator: In
+                values:
+                - "true"
+            - matchExpressions:
+              - key: feature.node.kubernetes.io/cpu-model.vendor_id
+                operator: In
+                values:
+                - NVIDIA
+            - matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: In
+                values:
+                - "true"
+---
+# Source: nvidia-dra-driver-gpu/templates/controller.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvidia-dra-driver-gpu-controller
+  namespace: nvidia-dra-driver-gpu
+  labels:
+    helm.sh/chart: nvidia-dra-driver-gpu-25.8.0
+    app.kubernetes.io/version: "25.8.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nvidia-dra-driver-gpu
+    app.kubernetes.io/instance: nvidia-dra-driver-gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      nvidia-dra-driver-gpu-component: controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-dra-driver-gpu
+        app.kubernetes.io/instance: nvidia-dra-driver-gpu
+        nvidia-dra-driver-gpu-component: controller
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: nvidia-dra-driver-gpu-service-account-controller
+      securityContext:
+        {}
+      containers:
+      - name: compute-domain
+        securityContext:
+          {}
+        image: nvcr.io/nvidia/k8s-dra-driver-gpu:v25.8.0
+        imagePullPolicy: IfNotPresent
+        command: ["compute-domain-controller", "-v", "$(LOG_VERBOSITY)"]
+        resources:
+          {}
+        env:
+        # LOG_VERBOSITY is the source of truth for this program's klog
+        # configuration. Currently injected via CLI argument (see above) because
+        # klog's verbosity for now cannot be sanely set from an env var.
+        - name: LOG_VERBOSITY
+          value: "4"
+        # LOG_VERBOSITY_CD_DAEMON controls the verbosity of dynamically launched
+        # CD daemons (their pod spec is not rendered by Helm, but by this
+        # controller).
+        - name: LOG_VERBOSITY_CD_DAEMON
+          value: "4"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: IMAGE_NAME
+          value: nvcr.io/nvidia/k8s-dra-driver-gpu:v25.8.0
+        # Use runc: explicit "void"; otherwise we inherit "all".
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: void
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+---
+# Source: nvidia-dra-driver-gpu/templates/controller.yaml
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: nvidia-dra-driver-gpu/templates/kubeletplugin.yaml
+# Copyright 2023 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: nvidia-dra-driver-gpu/templates/openshiftprivilegedrolebinging.yaml
+# Apply only when running on OpenShift to let the kublet plugin run privileged
+---
+# Source: nvidia-dra-driver-gpu/templates/validation.yaml
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: nvidia-dra-driver-gpu/templates/webhook-deployment.yaml
+# Copyright 2025 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: nvidia-dra-driver-gpu/templates/deviceclass-compute-domain-daemon.yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: compute-domain-daemon.nvidia.com
+spec:
+  selectors:
+  - cel:
+      expression: "device.driver == 'compute-domain.nvidia.com' && device.attributes['compute-domain.nvidia.com'].type == 'daemon'"
+---
+# Source: nvidia-dra-driver-gpu/templates/deviceclass-compute-domain-default-channel.yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: compute-domain-default-channel.nvidia.com
+spec:
+  selectors:
+  - cel:
+      expression: "device.driver == 'compute-domain.nvidia.com' && device.attributes['compute-domain.nvidia.com'].type == 'channel' && device.attributes['compute-domain.nvidia.com'].id == 0"
+---
+# Source: nvidia-dra-driver-gpu/templates/validatingadmissionpolicy.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: resourceslices-policy-nvidia-dra-driver-gpu
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:   ["resource.k8s.io"]
+      apiVersions: ["v1", "v1beta1", "v1beta2"]
+      operations:  ["CREATE", "UPDATE", "DELETE"]
+      resources:   ["resourceslices"]
+  matchConditions:
+  - name: isRestrictedUser
+    expression: >-
+      request.userInfo.username == "system:serviceaccount:nvidia-dra-driver-gpu:nvidia-dra-driver-gpu-service-account"
+  variables:
+  - name: userNodeName
+    expression: >-
+      request.userInfo.extra[?'authentication.kubernetes.io/node-name'][0].orValue('')
+  - name: objectNodeName
+    expression: >-
+      (request.operation == "DELETE" ? oldObject : object).spec.?nodeName.orValue("")
+  - name: nodeSelectorValue
+    expression: >-
+      (request.operation == "DELETE" ? oldObject : object).spec.?nodeSelector.orValue(null)
+  - name: allNodesValue
+    expression: >-
+      (request.operation == "DELETE" ? oldObject : object).spec.?allNodes.orValue(false)
+  validations:
+  - expression: variables.userNodeName != ""
+    message: >-
+      no node association found for user, this user must run in a pod on a node and ServiceAccountTokenPodNodeInfo must be enabled
+  - expression: variables.userNodeName == variables.objectNodeName || variables.allNodesValue == true || variables.nodeSelectorValue != null
+    messageExpression: >-
+      "this user running on node '"+variables.userNodeName+"' may not modify cluster or node resourceslices"
+---
+# Source: nvidia-dra-driver-gpu/templates/validatingadmissionpolicybinding.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: resourceslices-policy-nvidia-dra-driver-gpu
+spec:
+  policyName: resourceslices-policy-nvidia-dra-driver-gpu
+  validationActions: [Deny]
+  # All ResourceSlices are matched.
+
+```
+
+## Intel DRA Driver
+Intel's GPU DRA Driver is also installed via a Helm chart.
+Let's take a look into the Intel GPU driver.
+
+Intel hosts its GPU DRA Driver on [GitHub](https://github.com/intel/intel-resource-drivers-for-kubernetes/blob/main/charts/intel-gpu-resource-driver/README.md)
+
+Let's look at Intel's GPU DRA Driver through a dry-run simulation of the helm install:
+
+```shell
+helm install --dry-run intel-gpu-resource-driver oci://ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart \
+    --namespace "intel-gpu-resource-driver" \
+    --create-namespace 
+
+```
+
+Output:
+```shell
+Pulled: ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart:0.9.0
+Digest: sha256:2c1945239fbc8c060460428d3f2c71dd4cec2136e68a83e4fada5ff7b21dfb34
+NAME: intel-gpu-resource-driver
+LAST DEPLOYED: Tue Nov  4 04:13:28 2025
+NAMESPACE: intel-gpu-resource-driver
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: intel-gpu-resource-driver-chart/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: intel-gpu-sa
+  namespace: intel-gpu-resource-driver
+  labels:
+    helm.sh/chart: intel-gpu-resource-driver-chart-0.9.0
+    app.kubernetes.io/version: "v0.9.0"
+    app.kubernetes.io/managed-by: Helm
+automountServiceAccountToken: true
+---
+# Source: intel-gpu-resource-driver-chart/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: intel-gpu-resource-driver-role
+  namespace: intel-gpu-resource-driver
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceslices"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclaims"]
+  verbs: ["get"]
+---
+# Source: intel-gpu-resource-driver-chart/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: intel-gpu-resource-driver-rolebinding
+  namespace: intel-gpu-resource-driver
+subjects:
+- kind: ServiceAccount
+  name: intel-gpu-sa
+  namespace: intel-gpu-resource-driver
+roleRef:
+  kind: ClusterRole
+  name: intel-gpu-resource-driver-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: intel-gpu-resource-driver-chart/templates/resource-driver.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: intel-gpu-resource-driver-kubelet-plugin
+  namespace: intel-gpu-resource-driver
+  labels:
+    helm.sh/chart: intel-gpu-resource-driver-chart-0.9.0
+    app.kubernetes.io/version: "v0.9.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: intel-gpu-resource-driver
+  template:
+    metadata:
+      labels:
+        app: intel-gpu-resource-driver
+    spec:
+      serviceAccountName: intel-gpu-sa
+      containers:
+      - name: kubelet-plugin
+        image: ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver:v0.9.0
+        imagePullPolicy: IfNotPresent
+        command: ["/kubelet-gpu-plugin"]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SYSFS_ROOT
+          value: "/sysfs"
+        - name: ZES_ENABLE_SYSMAN
+          value: "1"
+        volumeMounts:
+        - name: plugins-registry
+          mountPath: /var/lib/kubelet/plugins_registry
+        - name: plugins
+          mountPath: /var/lib/kubelet/plugins
+        - name: cdi
+          mountPath: /etc/cdi
+        - name: varruncdi
+          mountPath: /var/run/cdi
+        # when using fake sysfs - mount at the same place as on host
+        - name: sysfs
+          mountPath: "/sysfs"
+        securityContext:
+          privileged: true
+          capabilities:
+            drop: ["ALL"]
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - name: plugins-registry
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+      - name: plugins
+        hostPath:
+          path: /var/lib/kubelet/plugins
+      - name: cdi
+        hostPath:
+          path: /etc/cdi
+      - name: varruncdi
+        hostPath:
+          path: /var/run/cdi
+      - name: sysfs
+        hostPath:
+          path: /sys
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+        - effect: NoSchedule
+          key: node.kubernetes.io/gpu
+          operator: Exists
+---
+# Source: intel-gpu-resource-driver-chart/templates/device-class.yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: gpu.intel.com
+
+spec:
+  selectors:
+  - cel:
+      expression: device.driver == "gpu.intel.com"
+  # Available in K8s v1.34 requires feature gate enabled
+  # See https://github.com/kubernetes/enhancements/tree/master/keps/sig-scheduling/5004-dra-extended-resource
+  extendedResourceName: intel.com/gpu
+---
+# Source: intel-gpu-resource-driver-chart/templates/validating-admission-policy.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: resourceslices-policy-dra-kubelet-plugin-gpu
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:   ["resource.k8s.io"]
+      apiVersions: ["v1"]
+      operations:  ["CREATE", "UPDATE", "DELETE"]
+      resources:   ["resourceslices"]
+  matchConditions:
+  - name: isRestrictedUser
+    expression: >-
+      request.userInfo.username == "system:serviceaccount:intel-gpu-resource-driver:intel-gpu-sa"
+  variables:
+  - name: userNodeName
+    expression: >-
+      request.userInfo.extra[?'authentication.kubernetes.io/node-name'][0].orValue('')
+  - name: objectNodeName
+    expression: >-
+      (request.operation == "DELETE" ? oldObject : object).spec.?nodeName.orValue("")
+  validations:
+  - expression: variables.userNodeName != ""
+    message: >-
+      no node association found for user, this user must run in a pod on a node and ServiceAccountTokenPodNodeInfo must be enabled
+  - expression: variables.userNodeName == variables.objectNodeName
+    messageExpression: >-
+      "this user running on node '"+variables.userNodeName+"' may not modify " +
+      (variables.objectNodeName == "" ?"cluster resourceslices" : "resourceslices on node '"+variables.objectNodeName+"'")
+---
+# Source: intel-gpu-resource-driver-chart/templates/validating-admission-policy-binding.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: resourceslices-policy-dra-kubelet-plugin-gpu
+spec:
+  policyName: resourceslices-policy-dra-kubelet-plugin-gpu
+  validationActions: [Deny]
+
+NOTES:
+Thank you for installing intel-gpu-resource-driver-chart.
+```
+
+Since our environment does not have real GPUs, in the next module we will install example GPU drivers
+
+## DRANET 
+Dynamic Resource Allocation is not specific to GPUs. 
+Google's DRANET is a Kubernetes Network Driver for high-performance networking that uses DRA.
+More on DRANET can be found here:
+https://github.com/google/dranet
+https://dranet.dev/docs/
+
+DRANET is installed via a yaml file.
+Let's inspect the yaml file:
+
+```shell
+curl https://raw.githubusercontent.com/google/dranet/refs/heads/main/install.yaml
+```
+
+Output:
+```shell
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dranet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+  - apiGroups:
+      - "resource.k8s.io"
+    resources:
+      - resourceslices
+    verbs:
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - "resource.k8s.io"
+    resources:
+      - resourceclaims
+      - deviceclasses
+    verbs:
+      - get
+  - apiGroups:
+      - "resource.k8s.io"
+    resources:
+      - resourceclaims/status
+    verbs:
+      - patch
+      - update
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dranet
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dranet
+subjects:
+- kind: ServiceAccount
+  name: dranet
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dranet
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dranet
+  namespace: kube-system
+  labels:
+    tier: node
+    app: dranet
+    k8s-app: dranet
+spec:
+  selector:
+    matchLabels:
+      app: dranet
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: dranet
+        k8s-app: dranet
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      serviceAccountName: dranet
+      hostPID: true
+      initContainers:
+      - name: enable-nri
+        image: busybox:stable
+        volumeMounts:
+        - mountPath: /etc
+          name: etc
+        securityContext:
+          privileged: true
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -o errexit
+          set -o pipefail
+          set -o nounset
+          set -x
+          if grep -q "io.containerd.nri.v1.nri" /etc/containerd/config.toml
+          then
+             echo "containerd config contains NRI reference already; taking no action"
+          else
+             echo "containerd config does not mention NRI, thus enabling it";
+             printf '%s\n' "[plugins.\"io.containerd.nri.v1.nri\"]" "  disable = false" "  disable_connections = false" "  plugin_config_path = \"/etc/nri/conf.d\"" "  plugin_path = \"/opt/nri/plugins\"" "  plugin_registration_timeout = \"5s\"" "  plugin_request_timeout = \"5s\"" "  socket_path = \"/var/run/nri/nri.sock\"" >> /etc/containerd/config.toml
+             echo "restarting containerd"
+             nsenter -t 1 -m -u -i -n -p -- systemctl restart containerd
+          fi
+      containers:
+      - name: dranet
+        args:
+        - /dranet
+        - --v=4
+        - --hostname-override=$(NODE_NAME)
+        image: ghcr.io/google/dranet:stable
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          privileged: true
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 9177
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/plugins
+        - name: plugin-registry
+          mountPath: /var/lib/kubelet/plugins_registry
+        - name: nri-plugin
+          mountPath: /var/run/nri
+        - name: netns
+          mountPath: /var/run/netns
+          mountPropagation: HostToContainer
+        - name: infiniband
+          mountPath: /dev/infiniband
+          mountPropagation: HostToContainer
+        - name: bpf-programs
+          mountPath: /sys/fs/bpf
+          mountPropagation: HostToContainer
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/plugins
+      - name: plugin-registry
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+      - name: nri-plugin
+        hostPath:
+          path: /var/run/nri
+      - name: netns
+        hostPath:
+          path: /var/run/netns
+      - name: infiniband
+        hostPath:
+          path: /dev/infiniband
+      - name: etc
+        hostPath:
+          path: /etc
+      - name: bpf-programs
+        hostPath:
+          path: /sys/fs/bpf
+---
+```
+
+Let's take a look at the objects that would be created with a `--dry-run=client`
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/google/dranet/refs/heads/main/install.yaml --dry-run=client
+```
+
+Output:
+```shell
+clusterrole.rbac.authorization.k8s.io/dranet created (dry run)
+clusterrolebinding.rbac.authorization.k8s.io/dranet created (dry run)
+serviceaccount/dranet created (dry run)
+daemonset.apps/dranet created (dry run)
+```
+# Module 4: Deploying Workloads that use DRA
+
+## Deploying a DRA Driver
+
+
+## MIG example
+Multi-instance GPU
+Enable MIG configuration
+
+1. Label your GPU nodes to enable MIG with the "all-balanced" configuration:
+
+kubectl label nodes <node-name> nvidia.com/mig.config=all-balanced
