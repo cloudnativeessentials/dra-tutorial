@@ -1823,7 +1823,6 @@ Let's look at Intel's GPU DRA Driver through a dry-run simulation of the helm in
 helm install --dry-run intel-gpu-resource-driver oci://ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart \
     --namespace "intel-gpu-resource-driver" \
     --create-namespace 
-
 ```
 
 Output:
@@ -2239,11 +2238,149 @@ clusterrolebinding.rbac.authorization.k8s.io/dranet created (dry run)
 serviceaccount/dranet created (dry run)
 daemonset.apps/dranet created (dry run)
 ```
-# Module 4: Deploying Workloads that use DRA
+# Module 4: Deploying DRA and Workloads
+
+## DeviceClass
+
+Create the `dra-tutorial` namespace:
+```shell
+kubectl create namespace dra-tutorial
+```
+
+Output:
+```shell
+namespace/dra-tutorial created
+```
+
+Create the DeviceClass that represents the supported devices of the DRA driver.
+Let's take a look at the manifest for the DeviceClass
+```shell
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deviceclass.yaml
+```
+
+Output:
+```shell
+apiVersion: resource.k8s.io/v1beta1
+kind: DeviceClass
+metadata:
+  name: gpu.example.com
+spec:
+  selectors:
+  - cel: 
+      expression: "device.driver == 'gpu.example.com'"
+```
+Commen Express Language (CEL) can be used to filter for specific attributes 
+
+Let's compare this DeviceClass with the ones from NVIDIA and Intel:
+
+NVIDIA:
+```shell
+helm install --dry-run nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
+    --create-namespace \
+    --namespace nvidia-dra-driver-gpu \
+    --set resources.gpus.enabled=false \
+    --set nvidiaDriverRoot=/run/nvidia/driver \
+    | grep -A 8 -B 2 "kind: DeviceClass"
+```
+
+Output:
+```shell
+# Source: nvidia-dra-driver-gpu/templates/deviceclass-compute-domain-daemon.yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: compute-domain-daemon.nvidia.com
+spec:
+  selectors:
+  - cel:
+      expression: "device.driver == 'compute-domain.nvidia.com' && device.attributes['compute-domain.nvidia.com'].type == 'daemon'"
+---
+# Source: nvidia-dra-driver-gpu/templates/deviceclass-compute-domain-default-channel.yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: compute-domain-default-channel.nvidia.com
+spec:
+  selectors:
+  - cel:
+      expression: "device.driver == 'compute-domain.nvidia.com' && device.attributes['compute-domain.nvidia.com'].type == 'channel' && device.attributes['compute-domain.nvidia.com'].id == 0"
+---
+# Source: nvidia-dra-driver-gpu/templates/validatingadmissionpolicy.yaml
+```
+
+
+Intel:
+```shell
+helm install --dry-run intel-gpu-resource-driver oci://ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart \
+    --namespace "intel-gpu-resource-driver" \
+    --create-namespace \
+    | grep -A 11 -B 2 "kind: DeviceClass"
+```
+
+Output:
+```shell
+Pulled: ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart:0.9.0
+Digest: sha256:2c1945239fbc8c060460428d3f2c71dd4cec2136e68a83e4fada5ff7b21dfb34
+# Source: intel-gpu-resource-driver-chart/templates/device-class.yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: gpu.intel.com
+
+spec:
+  selectors:
+  - cel:
+      expression: device.driver == "gpu.intel.com"
+  # Available in K8s v1.34 requires feature gate enabled
+  # See https://github.com/kubernetes/enhancements/tree/master/keps/sig-scheduling/5004-dra-extended-resource
+  extendedResourceName: intel.com/gpu
+---
+```
+
+Before we deploy a DRA driver, let's deploy RBAC resources like the ServiceAccount, ClusterRole, ClusterRoleBinding
 
 ## Deploying a DRA Driver
 
+Before creating the example DRA driver, let's take a look at the DRA driver's manifest
+```shell
+curl --silent https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml | head -n 27
+```
 
+Output:
+```shell
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dra-example-driver-kubeletplugin
+  namespace: dra-tutorial
+  labels:
+    app.kubernetes.io/name: dra-example-driver
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dra-example-driver
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dra-example-driver
+    spec:
+      priorityClassName: dra-driver-high-priority
+      serviceAccountName: dra-example-driver-service-account
+      securityContext:
+        {}
+      containers:
+      - name: plugin
+        securityContext:
+          privileged: true
+        image: registry.k8s.io/dra-example-driver/dra-example-driver:v0.2.0
+```
+
+Create the DRA driver in a DaemonSet, the driver binary is in a container image:
+```shell
+
+```
 ## MIG example
 Multi-instance GPU
 Enable MIG configuration
