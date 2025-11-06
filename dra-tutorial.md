@@ -2345,12 +2345,85 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tut
 
 Output:
 ```shell
+deviceclass.resource.k8s.io/gpu.example.com created
 ```
+
 
 ## RBAC
 Before we deploy a DRA driver, let's deploy RBAC resources like the ServiceAccount, ClusterRole, ClusterRoleBinding
 
+Let's take a look at the ServiceAccount, ClusterRole, ClusterRoleBinding that binds the ClusterRole to the Service Account:
+
+```shell
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/rbac.yaml
+```
+
+Output:
+```shell
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dra-example-driver-service-account
+  namespace: dra-tutorial
+  labels:
+    app.kubernetes.io/name: dra-example-driver
+    app.kubernetes.io/instance: dra-example-driver
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dra-example-driver-role
+rules:
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclaims"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceslices"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dra-example-driver-role-binding
+subjects:
+- kind: ServiceAccount
+  name: dra-example-driver-service-account
+  namespace: dra-tutorial
+roleRef:
+  kind: ClusterRole
+  name: dra-example-driver-role
+  apiGroup: rbac.authorization.k8s.io
+---
+```
+
+Create the ServiceAccount, ClusterRole, and ClusteRoleBinding:
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/rbac.yaml
+```
+
+Output:
+```shell
+serviceaccount/dra-example-driver-service-account created
+clusterrole.rbac.authorization.k8s.io/dra-example-driver-role created
+clusterrolebinding.rbac.authorization.k8s.io/dra-example-driver-role-binding created
+```
+
+
 ## Deploying a DRA Driver
+
+Create the PriorityClass to prevent preemption of the DRA driver:
+
+```shell
+```
+
+Output:
+```shell
+```
 
 Before creating the example DRA driver, let's take a look at the DRA driver's manifest
 ```shell
