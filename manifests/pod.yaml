@@ -4,7 +4,7 @@ metadata:
   name: ollama
   namespace: dra-tutorial
   labels:
-    app: pod
+    app: ollama
 spec:
   containers:
   - name: ollama

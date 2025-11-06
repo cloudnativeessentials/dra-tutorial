@@ -36,7 +36,7 @@ Module 4
 5 minutes - Explore YAML on how to use the different benefits of DRA
 Building a DRA driver?
 GPU examples?
-Look at Intel and NVIDIA?
+
 
 
 ## Old way (maybe don't include)
@@ -715,7 +715,7 @@ helm show all nvidia/nvidia-dra-driver-gpu
 ```
 
 Output:
-```
+```shell
 apiVersion: v2
 appVersion: 25.8.0
 description: Official Helm chart for the NVIDIA DRA Driver for GPUs
@@ -2772,6 +2772,9 @@ example-resource-claim   pending   28s
 
 ## Pod
 
+Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image.
+To use a real GPU, you can use the `ollama/ollama` container image.
+
 Let's take a look at the Pod manifest:
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod.yaml
@@ -2785,7 +2788,7 @@ metadata:
   name: ollama
   namespace: dra-tutorial
   labels:
-    app: pod
+    app: ollama
 spec:
   containers:
   - name: ollama
@@ -2911,6 +2914,55 @@ Status:
     Resource:  pods
     UID:       69dc4953-e0ad-4955-afda-c5a8fc6b7005
 Events:        <none>
+```
+Any additional Pods that use this ResourceClaim are also listed under `Reserved For:`
+
+Check the Pod
+
+```shell
+kubectl get pods -n dra-tutorial -l app=ollama
+```
+
+Output:
+```shell
+NAME     READY   STATUS    RESTARTS   AGE
+ollama   1/1     Running   0          2m5s
+```
+
+In the Ollama Pod, pull the llama 3.2 LLM:
+```shell
+kubectl -n dra-tutorial exec ollama -- ollama pull llama3.2
+```
+Output:
+```shell
+pulling manifest 
+pulling dde5aa3fc5ff: 100% ▕██████████████████▏ 2.0 GB                         
+pulling 966de95ca8a6: 100% ▕██████████████████▏ 1.4 KB                         
+pulling fcc5a6bec9da: 100% ▕██████████████████▏ 7.7 KB                         
+pulling a70ff7e570d9: 100% ▕██████████████████▏ 6.0 KB                         
+pulling 56bb8bd477a5: 100% ▕██████████████████▏   96 B                         
+pulling 34bb5ab01051: 100% ▕██████████████████▏  561 B                         
+verifying sha256 digest 
+writing manifest 
+success 
+```
+
+Create a NodePort Service to expose the Ollama Pod
+
+```shell
+curl -w "/n" 
+```
+```
+kubectl apply -f
+```
+
+Test the Llama model:
+
+```shell
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3.2",
+  "prompt": "What is Kubernetes?"
+}'
 ```
 ## MIG example
 Multi-instance GPU
