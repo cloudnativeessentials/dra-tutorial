@@ -16,12 +16,6 @@ spec:
     resources:
       claims:
       - name: gpu
-    # requests:
-      #  nvidia.com/gpu: "1"
-  # tolerations:
-  # - key: nvidia.com/gpu
-    # effect: NoSchedule
-    # operator: Exists
   resourceClaims:
   - name: gpu
     resourceClaimName: example-resource-claim
