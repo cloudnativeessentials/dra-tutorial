@@ -2745,7 +2745,7 @@ spec:
          selectors:
           - cel:
               expression: |-
-                device.capacity["driver.example.com"].memory == quantity("80Gi")
+                device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
 This manifest creates ResourceClaim that requests devices in the gpu.example.com DeviceClass that have 80Gi of capacity.
 
@@ -2810,12 +2810,108 @@ spec:
 
 Create the Pod:
 ```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod.yaml
 ```
 
 Output
 ```shell
+pod/ollama created
 ```
 
+Check the state of the ResourceClaim:
+```shell
+kubectl get resourceclaim -n dra-tutorial
+```
+
+Output:
+```shell
+NAME                     STATE                AGE
+example-resource-claim   allocated,reserved   5m
+```
+
+Describe the ResourceClaim:
+
+```shell
+kubectl describe resourceclaim -n dra-tutorial example-resource-claim
+```
+
+Output:
+```shell
+Name:         example-resource-claim
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-06T07:54:29Z
+  Finalizers:
+    resource.kubernetes.io/delete-protection
+  Resource Version:  7552
+  UID:               45f7a77f-07c4-465c-9f62-c90b9e3b4ba5
+Spec:
+  Devices:
+    Requests:
+      Exactly:
+        Allocation Mode:    All
+        Device Class Name:  gpu.example.com
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              example-gpu
+Status:
+  Allocation:
+    Devices:
+      Results:
+        Device:   gpu-2
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-3
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-4
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-5
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-6
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-0
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-1
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-7
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+        Device:   gpu-8
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+    Node Selector:
+      Node Selector Terms:
+        Match Fields:
+          Key:       metadata.name
+          Operator:  In
+          Values:
+            kind-worker
+  Reserved For:
+    Name:      ollama
+    Resource:  pods
+    UID:       69dc4953-e0ad-4955-afda-c5a8fc6b7005
+Events:        <none>
+```
 ## MIG example
 Multi-instance GPU
 Enable MIG configuration
