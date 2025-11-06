@@ -24,4 +24,4 @@ spec:
     # operator: Exists
   resourceClaims:
   - name: gpu
-    resourceClaimName: example-gpu
+    resourceClaimName: example-resource-claim
