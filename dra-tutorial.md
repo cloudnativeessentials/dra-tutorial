@@ -2720,6 +2720,36 @@ Spec:
 Events:                    <none>
 ```
 
+## ResourceClaim
+
+Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest:
+
+```shell
+curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
+```
+
+Output:
+```
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+ name: example-gpu
+ namespace: dra-tutorial
+spec:
+   devices:
+     requests:
+     - name: example-gpu
+       deviceClassName: gpu.example.com
+       selectors:
+       - cel:
+          expression: "device.capacity['gpu.example.com'].memory.compareTo(quantity('10Gi')) >= 0"
+```
+
+Create the ResourceClaim:
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
+```
+
 ## MIG example
 Multi-instance GPU
 Enable MIG configuration
