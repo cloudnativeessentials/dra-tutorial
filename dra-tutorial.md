@@ -2725,7 +2725,7 @@ Events:                    <none>
 Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest:
 
 ```shell
-curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
 ```
 
 Output:
@@ -2739,11 +2739,13 @@ spec:
    devices:
      requests:
      - name: example-gpu
-       deviceClassName: gpu.example.com
-       selectors:
-        - cel:
-            expression: |-
-              device.capacity["driver.example.com"].memory == quantity("80Gi")
+       exactly:
+         deviceClassName: gpu.example.com
+         allocationMode: All
+         selectors:
+          - cel:
+              expression: |-
+                device.capacity["driver.example.com"].memory == quantity("80Gi")
 ```
 This manifest creates ResourceClaim that requests devices in the gpu.example.com DeviceClass that have 80Gi of capacity.
 
@@ -2753,6 +2755,64 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tut
 ```
 
 Output:
+```shell
+resourceclaim.resource.k8s.io/example-resource-claim created
+```
+
+Let's check the state of the ResourceClaim:
+```shell
+kubectl get resourceclaim -n dra-tutorial
+```
+
+Expected output:
+```shell
+NAME                     STATE     AGE
+example-resource-claim   pending   28s
+```
+
+## Pod
+
+Let's take a look at the Pod manifest:
+```shell
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod.yaml
+```
+
+Output:
+```shell
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ollama
+  namespace: dra-tutorial
+  labels:
+    app: pod
+spec:
+  containers:
+  - name: ollama
+    image: docker.io/alpine/ollama:0.12.9
+    ports:
+        - name: http
+          containerPort: 11434
+          protocol: TCP
+    resources:
+      claims:
+      - name: gpu
+    # requests:
+      #  nvidia.com/gpu: "1"
+  # tolerations:
+  # - key: nvidia.com/gpu
+    # effect: NoSchedule
+    # operator: Exists
+  resourceClaims:
+  - name: gpu
+    resourceClaimName: example-resource-claim
+```
+
+Create the Pod:
+```shell
+```
+
+Output
 ```shell
 ```
 
