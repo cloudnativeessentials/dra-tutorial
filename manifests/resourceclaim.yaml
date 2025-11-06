@@ -7,8 +7,10 @@ spec:
    devices:
      requests:
      - name: example-gpu
-       deviceClassName: gpu.example.com
-       selectors:
-        - cel:
-            expression: |-
-              device.capacity["driver.example.com"].memory == quantity("80Gi")
+       exactly:
+         deviceClassName: gpu.example.com
+         allocationMode: All
+         selectors:
+          - cel:
+              expression: |-
+                device.capacity["driver.example.com"].memory == quantity("80Gi")

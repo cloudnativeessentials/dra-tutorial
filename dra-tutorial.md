@@ -2733,7 +2733,7 @@ Output:
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
 metadata:
- name: example-gpu
+ name: example-resource-claim
  namespace: dra-tutorial
 spec:
    devices:
@@ -2741,13 +2741,19 @@ spec:
      - name: example-gpu
        deviceClassName: gpu.example.com
        selectors:
-       - cel:
-          expression: "device.capacity['gpu.example.com'].memory.compareTo(quantity('10Gi')) >= 0"
+        - cel:
+            expression: |-
+              device.capacity["driver.example.com"].memory == quantity("80Gi")
 ```
+This manifest creates ResourceClaim that requests devices in the gpu.example.com DeviceClass that have 80Gi of capacity.
 
 Create the ResourceClaim:
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
+```
+
+Output:
+```shell
 ```
 
 ## MIG example
