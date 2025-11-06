@@ -113,6 +113,13 @@ You can now use your cluster with:
 kubectl cluster-info --context kind-kind
 
 Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 11928  100 11928    0     0  99400      0 --:--:-- --:--:-- --:--:-- 99400
+Downloading https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz
+Verifying checksum... Done.
+Preparing to install helm into /usr/local/bin
+helm installed into /usr/local/bin/helm
 kind cluster is ready
 ```
 
@@ -2238,6 +2245,7 @@ clusterrolebinding.rbac.authorization.k8s.io/dranet created (dry run)
 serviceaccount/dranet created (dry run)
 daemonset.apps/dranet created (dry run)
 ```
+
 # Module 4: Deploying DRA and Workloads
 
 ## DeviceClass
@@ -2337,6 +2345,7 @@ spec:
 ---
 ```
 
+
 Create the DeviceClass for the example DRA driver:
 
 ```shell
@@ -2414,20 +2423,41 @@ clusterrolebinding.rbac.authorization.k8s.io/dra-example-driver-role-binding cre
 ```
 
 
-## Deploying a DRA Driver
+## PriorityClass
 
 Create the PriorityClass to prevent preemption of the DRA driver:
 
+First look at the PriorityClass:
 ```shell
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/priorityclass.yaml
 ```
 
 Output:
 ```shell
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: dra-driver-high-priority
+value: 1000000
+globalDefault: false
+description: "PriorityClass for DRA driver pods only to prevent preemption of the DRA driver."
 ```
 
+Create the PriorityClass:
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/priorityclass.yaml
+```
+
+Expected output:
+```shell
+priorityclass.scheduling.k8s.io/dra-driver-high-priority created
+```
+
+## Deploying the DRA Driver
 Before creating the example DRA driver, let's take a look at the DRA driver's manifest
 ```shell
-curl --silent https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml | head -n 27
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
 ```
 
 Output:
@@ -2459,12 +2489,237 @@ spec:
         securityContext:
           privileged: true
         image: registry.k8s.io/dra-example-driver/dra-example-driver:v0.2.0
+        imagePullPolicy: IfNotPresent
+        command: ["dra-example-kubeletplugin"]
+        resources:
+          {}
+        # Production drivers should always implement a liveness probe
+        # For the tutorial we simply omit it
+        # livenessProbe:
+        #   grpc:
+        #     port: 51515
+        #     service: liveness
+        #   failureThreshold: 3
+        #   periodSeconds: 10
+        env:
+        - name: CDI_ROOT
+          value: /var/run/cdi
+        - name: KUBELET_REGISTRAR_DIRECTORY_PATH
+          value: "/var/lib/kubelet/plugins_registry"
+        - name: KUBELET_PLUGINS_DIRECTORY_PATH
+          value: "/var/lib/kubelet/plugins"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # Simulated number of devices the example driver will pretend to have.
+        - name: NUM_DEVICES
+          value: "9"
+        - name: HEALTHCHECK_PORT
+          value: "51515"
+        volumeMounts:
+        - name: plugins-registry
+          mountPath: "/var/lib/kubelet/plugins_registry"
+        - name: plugins
+          mountPath: "/var/lib/kubelet/plugins"
+        - name: cdi
+          mountPath: /var/run/cdi
+      volumes:
+      - name: plugins-registry
+        hostPath:
+          path: "/var/lib/kubelet/plugins_registry"
+      - name: plugins
+        hostPath:
+          path: "/var/lib/kubelet/plugins"
+      - name: cdi
+        hostPath:
+          path: /var/run/cdi
 ```
 
 Create the DRA driver in a DaemonSet, the driver binary is in a container image:
 ```shell
-
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
 ```
+
+Output:
+```shell
+daemonset.apps/dra-example-driver-kubeletplugin created
+```
+
+Check the status of the DRA driver:
+```shell
+ kubectl get daemonset,pods -n dra-tutorial -l app.kubernetes.io/name=dra-example-driver
+```
+
+Output:
+```shell
+NAME                                              DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/dra-example-driver-kubeletplugin   1         1         1       1            1           <none>          2m17s
+
+NAME                                         READY   STATUS    RESTARTS   AGE
+pod/dra-example-driver-kubeletplugin-q7whd   1/1     Running   0          2m17s
+```
+
+## ResourceSlice
+
+Describe the ResourceSlice to see information of the devices on the node
+
+```shell
+kubectl describe $(kubectl get resourceslice -o name)
+```
+
+Output:
+```shell
+Name:         kind-worker-gpu.example.com-64xtr
+Namespace:    
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceSlice
+Metadata:
+  Creation Timestamp:  2025-11-06T06:52:11Z
+  Generate Name:       kind-worker-gpu.example.com-
+  Generation:          1
+  Owner References:
+    API Version:     v1
+    Controller:      true
+    Kind:            Node
+    Name:            kind-worker
+    UID:             e46b9945-d663-49d0-97bd-ff9640b821df
+  Resource Version:  1967
+  UID:               38823e34-ae11-4356-8565-97c7e989ca0e
+Spec:
+  Devices:
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  2
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-6ab67185-8eff-3a23-32fd-75bfbe37b488
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-2
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  3
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-6b77fb80-2d68-809d-4bf1-285e5f47dcc5
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-3
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  4
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-417d66cd-4546-0786-59a3-ef7eb54c564d
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-4
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  5
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-f0fdf728-dccb-f484-bbf5-33f63a90b820
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-5
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  6
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-121b8219-b8d6-015c-b2eb-1e320ee07510
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-6
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  0
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-4cbf87f3-433e-6717-5588-c33e6886832f
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-0
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  1
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-58bd415e-dee8-f0a5-ca03-02d000554b1a
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-1
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  7
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-f270be4e-7cd6-da75-39e7-b707122f9b70
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-7
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  8
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-091ffa42-7640-9cfd-c78e-4fbb544c2a00
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-8
+  Driver:       gpu.example.com
+  Node Name:    kind-worker
+  Pool:
+    Generation:            1
+    Name:                  kind-worker
+    Resource Slice Count:  1
+Events:                    <none>
+```
+
 ## MIG example
 Multi-instance GPU
 Enable MIG configuration

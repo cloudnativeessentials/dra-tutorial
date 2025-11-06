@@ -1,12 +1,12 @@
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
 metadata:
- name: some-gpu
+ name: example-gpu
  namespace: dra-tutorial
 spec:
    devices:
      requests:
-     - name: some-gpu
+     - name: example-gpu
        deviceClassName: gpu.example.com
        selectors:
        - cel:

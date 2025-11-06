@@ -4,4 +4,4 @@ metadata:
   name: dra-driver-high-priority
 value: 1000000
 globalDefault: false
-description: "This priority class should be used for DRA driver pods only."
+description: "PriorityClass for DRA driver pods only to prevent preemption of the DRA driver."
