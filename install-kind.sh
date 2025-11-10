@@ -50,6 +50,8 @@ nodes:
   extraPortMappings:
   - containerPort: 11434
     hostPort: 11434
+  - containerPort: 8000
+    hostPort: 8000
 EOF
 
 # create kind cluster using kind-config.yaml

@@ -69,7 +69,7 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
-Go to the workshop platform to obtain login instructions to a VM:
+Go to the [workshop platform](https://catalog.demo.redhat.com/workshop/tetk9u) to obtain login instructions to a VM:
 <br><img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="800"/><br>
 
 <br><img src="./images/login-instructions.png" alt="login instructions" width="400"/><br>
@@ -97,14 +97,13 @@ lab-user@rhel9.m4kkb.sandbox1943.opentlc.com's password:
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
 Run the install script:
-Note: the install script will take about 3.5 minutes
+Note: the install script will take about 3.5 minutes and works on RHEL 9
 
 ``` shell
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
 
 Output:
-
 ```shell
 This script installs Docker, kind, kubectl, and creates a kind cluster
 This will take several minutes to complete 
@@ -2639,7 +2638,6 @@ curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutoria
 ```
 
 Output:
-
 ```shell
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
@@ -2657,7 +2655,6 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tut
 ```
 
 Output:
-
 ```shell
 priorityclass.scheduling.k8s.io/dra-driver-high-priority created
 ```
@@ -2776,7 +2773,175 @@ NAME                                         READY   STATUS    RESTARTS   AGE
 pod/dra-example-driver-kubeletplugin-q7whd   1/1     Running   0          2m17s
 ```
 
-#### ResourceClaim
+## ResourceSlice
+
+A ResourceSlice would be created. Let's take a look into the ResourceSlice
+
+```shell
+kubectl get resourceslice
+```
+
+Output:
+```shell
+NAME                                NODE          DRIVER            POOL          AGE
+kind-worker-gpu.example.com-w9pv9   kind-worker   gpu.example.com   kind-worker   7m48s
+```
+
+Describe the ResourceSlice to see the "fictional" devices:
+
+```shell
+kubectl describe $(kubectl get resourceslice -o name)
+```
+
+Output:
+```shell
+Name:         kind-worker-gpu.example.com-w9pv9
+Namespace:    
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceSlice
+Metadata:
+  Creation Timestamp:  2025-11-10T18:31:45Z
+  Generate Name:       kind-worker-gpu.example.com-
+  Generation:          1
+  Owner References:
+    API Version:     v1
+    Controller:      true
+    Kind:            Node
+    Name:            kind-worker
+    UID:             939276b2-7940-4e27-a644-c53313bf4ad2
+  Resource Version:  16424
+  UID:               076766a8-4df1-40fa-ba05-bd345acf8772
+Spec:
+  Devices:
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  7
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-f270be4e-7cd6-da75-39e7-b707122f9b70
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-7
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  2
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-6ab67185-8eff-3a23-32fd-75bfbe37b488
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-2
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  3
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-6b77fb80-2d68-809d-4bf1-285e5f47dcc5
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-3
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  8
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-091ffa42-7640-9cfd-c78e-4fbb544c2a00
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-8
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  0
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-4cbf87f3-433e-6717-5588-c33e6886832f
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-0
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  1
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-58bd415e-dee8-f0a5-ca03-02d000554b1a
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-1
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  4
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-417d66cd-4546-0786-59a3-ef7eb54c564d
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-4
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  5
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-f0fdf728-dccb-f484-bbf5-33f63a90b820
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-5
+    Attributes:
+      Driver Version:
+        Version:  1.0.0
+      Index:
+        Int:  6
+      Model:
+        String:  LATEST-GPU-MODEL
+      Uuid:
+        String:  gpu-121b8219-b8d6-015c-b2eb-1e320ee07510
+    Capacity:
+      Memory:
+        Value:  80Gi
+    Name:       gpu-6
+  Driver:       gpu.example.com
+  Node Name:    kind-worker
+  Pool:
+    Generation:            1
+    Name:                  kind-worker
+    Resource Slice Count:  1
+Events:                    <none>
+```
+
+## ResourceClaim
 
 Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest:
 
@@ -2785,7 +2950,7 @@ curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutoria
 ```
 
 Output:
-```
+```yaml
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
 metadata:
@@ -2804,12 +2969,12 @@ spec:
               expression: |-
                 device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
+This manifest creates ResourceClaim that requests for 1 device in the gpu.example.com DeviceClass that have 80Gi of capacity.
 
-This manifest creates ResourceClaim that requests devices in the gpu.example.com DeviceClass that have 80Gi of capacity.
-
-alloctionMode defines how devices are allocated, the options are `ExactCount` or `All` in which requests for all matching devices in the pool will be allocated
+`alloctionMode` defines how devices are allocated, the options are `ExactCount` or `All` in which requests for all matching devices in the pool will be allocated
 
 Create the ResourceClaim:
+
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
 ```
@@ -2820,24 +2985,60 @@ resourceclaim.resource.k8s.io/example-resource-claim created
 ```
 
 Let's check the state of the ResourceClaim:
+
 ```shell
 kubectl get resourceclaim -n dra-tutorial
 ```
 
-Expected output:
+Output:
 ```shell
 NAME                     STATE     AGE
 example-resource-claim   pending   28s
 ```
 
+Describe the ResourceClaim:
+
+```shell
+kubectl describe resourceclaim -n dra-tutorial example-resource-claim
+```
+
+Output:
+```shell
+Name:         example-resource-claim
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-10T18:38:11Z
+  Resource Version:    16990
+  UID:                 a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a
+Spec:
+  Devices:
+    Requests:
+      Exactly:
+        Allocation Mode:    ExactCount
+        Count:              1
+        Device Class Name:  gpu.example.com
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              example-gpu
+Status:
+Events:  <none>
+```
+
 #### Workload
 
-Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image.
-To use a real GPU, you can use the `ollama/ollama` container image.
+Ollama (Omni-Layer Learning Language Acquisition Model) is a tool that runs LLMs locally.
+Ollama.com hosts many LLM models.
 
-Ollama is a tool that runs LLMs locally.
-Ollama can also host LLMs 
+Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image.
+If you're using a GPU, you can use the `ollama/ollama` container image to take advantage of the GPU.
+
 Let's take a look at the Pod manifest:
+
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod.yaml
 ```
@@ -2888,6 +3089,8 @@ NAME                     STATE                AGE
 example-resource-claim   allocated,reserved   5m
 ```
 
+Now the ResourceClaim is at an `allocated,reserved`.
+
 Describe the ResourceClaim:
 
 ```shell
@@ -2895,6 +3098,55 @@ kubectl describe resourceclaim -n dra-tutorial example-resource-claim
 ```
 
 Output:
+```shell
+Name:         example-resource-claim
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-10T18:38:11Z
+  Finalizers:
+    resource.kubernetes.io/delete-protection
+  Resource Version:  18455
+  UID:               a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a
+Spec:
+  Devices:
+    Requests:
+      Exactly:
+        Allocation Mode:    ExactCount
+        Count:              1
+        Device Class Name:  gpu.example.com
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              example-gpu
+Status:
+  Allocation:
+    Devices:
+      Results:
+        Device:   gpu-7
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+    Node Selector:
+      Node Selector Terms:
+        Match Fields:
+          Key:       metadata.name
+          Operator:  In
+          Values:
+            kind-worker
+  Reserved For:
+    Name:      ollama
+    Resource:  pods
+    UID:       bc92ce32-b3fa-4632-bbe5-54c4553dbd1d
+Events:        <none>
+```
+
+The ResourceClaim shows that the ollama Pod reserved gpu-7.
+It reserves only one GPU since the ResourceClaim had `allocationMode: ExactCount` and `count: 1`
+If the ResourceClaim had `allocationMode: All`, then the ResourceClaim would claim all devices that satisfies the request selection CEL expresion and the output would be similar to the following in which the ResouceClaim claims 9 GPUs for the Pod:
 ```shell
 Name:         example-resource-claim
 Namespace:    dra-tutorial
@@ -2971,18 +3223,24 @@ Status:
     UID:       69dc4953-e0ad-4955-afda-c5a8fc6b7005
 Events:        <none>
 ```
+
 Any additional Pods that use this ResourceClaim are also listed under `Reserved For:`
 
 Check how the DRA driver handled device allocation:
+
 ```shell
 kubectl logs -l app.kubernetes.io/name=dra-example-driver -n dra-tutorial
-I1106 20:02:27.940433       1 health.go:70] "connecting to registration socket" path="unix:///var/lib/kubelet/plugins_registry/gpu.example.com-reg.sock"
-I1106 20:02:27.940658       1 health.go:83] "connecting to DRA socket" path="unix:///var/lib/kubelet/plugins/gpu.example.com/dra.sock"
-I1106 20:02:27.940997       1 health.go:103] "starting healthcheck service" addr="[::]:51515"
-I1106 20:02:48.015898       1 driver.go:107] PrepareResourceClaims is called: number of claims: 1
-I1106 20:02:48.019926       1 driver.go:134] Returning newly prepared devices for claim '8dd46879-44b5-4d07-b546-7aec29a5016b': [{[example-gpu] kind-worker gpu-6 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-6]} {[example-gpu] kind-worker gpu-7 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-7]} {[example-gpu] kind-worker gpu-0 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-0]} {[example-gpu] kind-worker gpu-3 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-3]} {[example-gpu] kind-worker gpu-4 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-4]} {[example-gpu] kind-worker gpu-5 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-5]} {[example-gpu] kind-worker gpu-8 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-8]} {[example-gpu] kind-worker gpu-1 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-1]} {[example-gpu] kind-worker gpu-2 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-2]}]
-
 ```
+
+Output:
+```shell
+I1110 18:31:44.155296       1 health.go:70] "connecting to registration socket" path="unix:///var/lib/kubelet/plugins_registry/gpu.example.com-reg.sock"
+I1110 18:31:44.155616       1 health.go:83] "connecting to DRA socket" path="unix:///var/lib/kubelet/plugins/gpu.example.com/dra.sock"
+I1110 18:31:44.156535       1 health.go:103] "starting healthcheck service" addr="[::]:51515"
+I1110 18:54:37.680486       1 driver.go:107] PrepareResourceClaims is called: number of claims: 1
+I1110 18:54:37.683431       1 driver.go:134] Returning newly prepared devices for claim 'a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a': [{[example-gpu] kind-worker gpu-7 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a-gpu-7]}]
+```
+
 Check the Pod
 
 ```shell
@@ -2995,7 +3253,8 @@ NAME     READY   STATUS    RESTARTS   AGE
 ollama   1/1     Running   0          2m5s
 ```
 
-In the Ollama Pod, pull the llama 3.2 LLM:
+In the Ollama Pod, pull Meta's [llama 3.2 LLM](https://ollama.com/library/llama3.2):
+
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama pull llama3.2
 ```
@@ -3013,45 +3272,13 @@ writing manifest
 success 
 ```
 
-Create a NodePort Service to expose the Ollama Pod
+Test the Llama model (this will take about 4 minutes):
 
-```shell
-curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/service.yaml
-```
-
-Output:
-```shell
-apiVersion: v1
-kind: Service
-metadata:
-  name: ollama-service
-  namespace: dra-tutorial
-spec:
-  type: NodePort
-  selector:
-    app: ollama
-  ports:
-    - protocol: TCP
-      port: 11434
-      targetPort: 11434
-```
-
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/service.yaml
-```
-
-Output:
-``shell
-service/ollama-service created
-```
-Test the Llama model:
-This will take 5 minutes
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama run llama3.2 "what is kubernetes"
 ```
 
-Output:
+Output (output may vary):
 ```shell
 Kubernetes (also known as K8s) is an open-source container orchestration system for automating the deployment, scaling, and management of containerized applications. It was originally designed by Google, and is now maintained by the Cloud Native Computing Foundation (CNCF).
 
@@ -3091,11 +3318,11 @@ Kubernetes provides a platform-agnostic way to deploy, manage, and scale applica
 In summary, Kubernetes is an open-source container orchestration system that automates the deployment, scaling, and management of containerized applications. It provides a flexible, scalable, and secure environment for building cloud-native applications.
 ```
 
-Meta's Llama 3.2 3B colletion of LLMs parameters is 2.0 GB.
-Let's use a smaller model like tinyllama 
+Meta's Llama 3.2 (3B parameters) collection of LLMs is 2.0 GB.
+Let's use a smaller model like [tinyllama](https://ollama.com/library/tinyllama).
 
-```
 In the Ollama Pod, pull the tinyllama LLM:
+
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama pull tinyllama:1.1b
 ```
@@ -3193,10 +3420,3 @@ GPU_DEVICE_2_SHARING_STRATEGY=TimeSlicing
 GPU_DEVICE_2_TIMESLICE_INTERVAL=Default
 HOME=/root
 ```
-## MIG example
-Multi-instance GPU
-Enable MIG configuration
-
-1. Label your GPU nodes to enable MIG with the "all-balanced" configuration:
-
-kubectl label nodes <node-name> nvidia.com/mig.config=all-balanced
