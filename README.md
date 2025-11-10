@@ -3611,7 +3611,8 @@ Events:                    <none>
 
 Create multiple Pods that reference the ResourceClaimTemplate:
 
-Use a Deployment to create multiple Pods that refers to the same ResourceClaimTemplate:
+Use a Job to create multiple Pods that refers to the same ResourceClaimTemplate.
+Take a look at the Job manifest:
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/job.yaml
