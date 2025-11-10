@@ -3533,8 +3533,7 @@ Both Pods are sharing GPU-7
 We can use a ResourceClaimTemplate to dynamically create ResourceClaims per-Pod.
 In this case, the ResourceClaims are not shareable.
 
-Let's look at a ResourceClaimTemplate:
-
+Let's look at the ResourceClaimTemplate manifest:
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaimtemplate.yaml
@@ -3560,9 +3559,9 @@ spec:
           selectors:
           - cel:
               expression: |-
-                device.capacity["gpu.example.com"].memory == quantity("80Gi")
+                device.capacity["gpu.example.com"].memory > quantity("40Gi")
 ```
-This ResourceClaimTemplate requests for one 80Gi device.
+This ResourceClaimTemplate requests for one device with more than 40Gi.
 
 Create the ResourceClaimTemplate:
 
@@ -3623,7 +3622,7 @@ Output:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: example-dra-job
+  name: dra-job
   namespace: dra-tutorial
 spec:
   completions: 6
@@ -3651,11 +3650,15 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tut
 
 Output:
 ```shell
-deployment.apps/ollama-deployment created
+job.batch/dra-job created
 ```
 
 ```shell
 kubectl -n dra-tutorial get jobs,pods,resourceclaims
+```
+
+Output:
+```shell
 NAME                                         READY   STATUS              RESTARTS   AGE
 pod/dra-example-driver-kubeletplugin-8tbxz   1/1     Running             0          144m
 pod/ollama                                   1/1     Running             0          121m
