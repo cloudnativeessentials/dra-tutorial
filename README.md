@@ -87,25 +87,25 @@ Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use 
 Go to the workshop platform to obtain a VM:
 <br><img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="800"/>
 
-![Red Hat Demo Platform](./images/initial-login.png)
-
 With the credentials, log into your VM
 Log into your VM
 ```shell
 ssh labuser@
 ```
 
-
+    <pre id="myCodeBlock">
+        <code class="language-js">
+            console.log('Hello, world!');
+        </code>
+    </pre>
+    <button class="btn" data-clipboard-target="#myCodeBlock code">Copy Code</button>
+    
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
 Run the install script:
 ```bash
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
-
-##
-<tab><tab>curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
-
 
 Output:
 
