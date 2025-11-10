@@ -9,18 +9,20 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
 
-Module 1 - Introduction to Dynamic Resource Allocation (15 minutes)
-5 minutes - What is DRA
-5 minutes - Cluster Setup (kind on RHEL)
+[Module 1 - Introduction to Dynamic Resource Allocation (15 minutes)](#module-1-introduction-to-dynamic-resource-allocation)
+7 minutes - [DRA Overview](#dra-overview)
+7 minutes - [Cluster Setup (kind on RHEL)](#cluster-setup)
 
-Module 2 - DRA Under the Covers (15 minutes)
-5 minutes - DRA Resource Driver
-5 minutes - Explore DRA Resources
+[Module 2 - DRA Under the Covers (15 minutes)](#module-2-dra-under-the-covers)
+5 minutes - [DRA Resource Driver](#dra-resource-driver)
+8 minutes - [DRA Resources](#dra-resources)
+            - [DRA Driver](#dra-driver-typically-a-daemonset)
+            - [ResourceSlice](#resourceslice)
 
 Module 3 - DRA Drivers (15 minutes)
-Intel Drivers
-NVIDIA Drivers
-DRANET
+5 minutes - Intel Drivers
+5 minutes - NVIDIA Drivers
+5 minutes - DRANET
 
 Module 4 - Deploying Workloads that use DRA (15 minutes)
 5 minutes - Explore Workload YAML that uses DRA
@@ -43,7 +45,7 @@ Container Toolkit (on the host), shim on top of containerd or docker on top of r
 CUDA 
 Device Driver (from vendor e.g. AMD, NVIDIA, on the host)
 
-## Module 1: Introduction to Dynamic Resource Allocation (DRA)
+## Module 1: Introduction to Dynamic Resource Allocation
 Kubernetes v1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
 Workloads need more than CPU and memory but also need specialized hardware.
 DRA is a new API for Pods to request and access specialized hardware like accelerators such as GPUs, field programmable gate arrays (FPGAs), Tensor Processing Unit (TPU) or network-attached devices.
@@ -75,7 +77,7 @@ When a Pod wants to use a device, the user creates a ResourceClaim or uses a Res
 
 A cluster admin installs a corresponding DeviceClass that has device configuration and selectors for the device.
 
-### Cluster setup
+### Cluster Setup
 
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
@@ -152,7 +154,7 @@ kind-worker          Ready    <none>          2m14s   v1.34.0
 
 Before we look at the DRA resources, let's take a look at a generic DRA Resource Driver
 
-## Module 2 - DRA Under the Covers
+## Module 2: DRA Under the Covers
 
 ### DRA Resource Driver
 2 components that coordinate with each other
