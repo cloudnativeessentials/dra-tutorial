@@ -14,15 +14,15 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Cluster Setup (kind on RHEL)](#cluster-setup) 10 minutes
 
 [Module 2 - DRA Under the Covers](#module-2-dra-under-the-covers) 24 minutes
-- [DRA Resource Driver](#dra-resource-driver) 6 minutes
+- [DRA Driver](#dra-driver) 6 minutes
 - [DRA Resources](#dra-resources) 
-  - [DRA Driver](#dra-driver-typically-a-daemonset) 5 minutes
+  - [DRA Driver](#dra-driver-1) 5 minutes
   - [ResourceSlice](#resourceslice) 3 minutes
   - [DeviceClass](#deviceclass) 4 minutes
   - [ResourceClaim](#resourceclaim) 3 minutes
   - [ResourceClaimTemplate](#resourceclaimtemplate) 3 minutes
 
-[Module 3 - DRA Drivers](#module-3-dra-drivers) 15 minutes
+[Module 3 - A Look into DRA Drivers](#module-3-a-look-into-dra-drivers) 15 minutes
 - [NVIDIA DRA Driver](#nvidia-dra-driver) 5 minutes
 - [Intel DRA Driver](#intel-dra-driver) 5 minutes
 - [DRANET](#dranet) 5 minutes
@@ -39,17 +39,17 @@ Workloads need more than CPU and memory but also need specialized hardware.
 DRA is a new API for Pods to request and access specialized hardware like accelerators such as GPUs, field programmable gate arrays (FPGAs), Tensor Processing Unit (TPU) or network-attached devices.
 Support for hardware are provided by vendors via DRA drivers.
 
-The previous way of accessing specialized hardware was with node plugins and had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric.
+The previous way of accessing specialized hardware was with device plugins and had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric.
 
 Node plugins are good for requesting single, linear quantity of resources.
 
 Later, you will take a look at a few vendor's DRA drivers: NVIDIA and Intel
-NVIDIA offers DRA driers for two types of resources: GPUs and ComputeDomains.
 
-Compared to device plugins, DRA offers the following benefits:
+Compared to device plugins, DRA offers the following benefits to use specialized devices by Kubernetes workloads:
 - device filtering with Common Expression Language (CEL) for fine-grained filtering
-- device sharing 
+- device sharing with multiple Pods
 - centralized device categorization
+- flexible configuration like dynamic GPU partitioning
 
 
 ### DRA Overview
@@ -111,6 +111,7 @@ This will take several minutes to complete
 Installing docker
 Updating Subscription Management repositories.
 Unable to read consumer identity
+
 ...
 
 kubectl: OK
@@ -168,10 +169,12 @@ In v1.34, the core DRA APIs `resource.k8s.io/v1` graduated to stable from `resou
 
 ## Module 2: DRA Under the Covers
 
-### DRA Resource Driver
+### DRA Driver
+
+A DRA driver 
 2 components that coordinate with each other
 - node-local kubelet plugin (DaemonSet) on nodes with the advertised device
-- centralized controller runing in HA
+- centralized controller running in HA (deployment)
 
 Centralized Controller
 - coordinates with Kubernetes scheduler to decide which node a ResourceClaim can be serviced on
@@ -179,22 +182,21 @@ Centralized Controller
 - performs deallocation of ResourceClaim once deleted
 
 Node-local kubelet plugin
-- advetise node-local state that the centralize controller needs to help make allocation decisions
+- advertize the node-local state that the centralize controller needs to help make allocation decisions
 - makes node-local operations required to prepare a ReourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
 - pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
 
 2 Modes to communicate between Centralized Controller and kubelet-plugin
 - Single, all-purpose, per-node CRD
   - kubelet plugin advertises available resources
-  - Controller tracks resources allocated
+  - controller tracks resources allocated
   - kubelet-plugin tracks resources it prepared
 - Split-purpose Communication
   - kubelet plugin advertises available resources via CRD that the controller can access
-  - Controller tracks allocated resources through ResourceHandle in ResourceClaim
-  - kubelet-plugin tracks resources in a checkpoint file on the local filesystem
+  - controller tracks allocated resources through ResourceHandle in ResourceClaim
+  - kubelet plugin tracks resources in a checkpoint file on the local filesystem
 
-Scheduling: in general, the Kubernetes scheduler and DRA driver controller communicate through the Kubernetes API server
-by updating a `PodSchedulingContext` object which leads to the allocation of the ResourceClaim and Pod to a Node with the available resource.
+Scheduling: in general, the Kubernetes scheduler and DRA driver controller communicate through the Kubernetes API server by updating a `PodSchedulingContext` object which leads to the allocation of the ResourceClaim and Pod to a Node with the available resource.
 
 Modes of Allocating Resources with DRA (specified in the ResourceClaim)
 - Immediate
@@ -207,30 +209,29 @@ Modes of Allocating Resources with DRA (specified in the ResourceClaim)
 
 ### DRA Resources
 
-#### DRA Driver (typically a DaemonSet)
-- typically installed as a DaemonSet and may use node affinity to schedule DaemonSets appropriately
-e.g. feature.node.kubernetes.io/pci-10de.present=true or feature.node.kubernetes.io/cpu-model.vendor_id=NVIDIA  or nvidia.com/gpu.present=true
+#### DRA Driver
 
 The DRA Driver has two main components:
 dra-controller: manages resource allocation requests 
-dra-kubelet-plugin: handles resource allocation on the node 
+dra-kubelet-plugin: handles resource allocation on the node, typically installed as a DaemonSet and may use node affinity to schedule DaemonSets appropriately e.g. `feature.node.kubernetes.io/pci-10de.present=true`, `feature.node.kubernetes.io/cpu-model.vendor_id=NVIDIA` or `nvidia.com/gpu.present=true`
 
-ResourceSlice: created by the DRA driver, tied to the node, represents devices represented by the driver on the node 
+ResourceSlice: created by the DRA driver, tied to the node, represents devices represented by the driver on the node. Used by Kubernetes to find nodes with devices for scheduling Pods to nodes that can access the requested resource(s)
 
-DeviceClass: defines category of devices e.g. gpu.nvidia.com
+DeviceClass: defines category of devices e.g. gpu.nvidia.com. Parameters in DeviceClasses match to a device(s) in ResourceSlices
 
 ResourceClaim: request for specific devices from a DeviceClass
 Can be referenced by multiple Pods if the device can be shared and not tied to any Pod's lifecycle
 
-ResourceClaimTemplate: template to generate resource claim. When a ResourceClaim is created from a ResourceClaimTemplate, it is tied to the Pod's lifecycle
+ResourceClaimTemplate: template to generate per-Pod ResourceClaims. When a ResourceClaim is created from a ResourceClaimTemplate, it is bound to the Pod's lifecycle
 
 #### ResourceSlice
+
 Represents the available devices represented by a driver on the node.
 The DRA driver creates the ResourceSlice.
 The Kubernetes scheduler uses ResourceSlices to determine where to allocate Pods.
 
 ```shell
-kubectl explain resourceslice
+kubectl explain resourceslice | head -n 30
 ```
 
 Output:
@@ -265,33 +266,37 @@ DESCRIPTION:
     For resources that are not local to a node, the node name is not set.
     Instead, the driver may use a node selector to specify where the devices are
     available.
-    
-    This is an alpha type and requires enabling the DynamicResourceAllocation
-    feature gate.
-    
-FIELDS:
-  apiVersion	<string>
-    APIVersion defines the versioned schema of this representation of an object.
-    Servers should convert recognized schemas to the latest internal value, and
-    may reject unrecognized values. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-
-  kind	<string>
-    Kind is a string value representing the REST resource this object
-    represents. Servers may infer this from the endpoint the client submits
-    requests to. Cannot be updated. In CamelCase. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-
-  metadata	<ObjectMeta>
-    Standard object metadata
-
-  spec	<ResourceSliceSpec> -required-
-    Contains the information published by the driver.
-    
-    Changing the spec automatically increments the metadata.generation number.
-
 ```
-  
+
+Within a ResourceSlice are the following:
+  - Resource pool: a group of 1 or more resources the driver manages
+  - Devices: are devices in a managed pool, devices lists information like versions, capacity, or other attributes
+  - Nodes: the nodes that can access the resources
+
+Here's an example of a ResourceSlice:
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  name: nvidia-gpu-slice
+spec:
+  driver: "gpu.nvidia.com" # The name of the DRA driver managing these resources
+  pool:
+    name: "nvidia-gpu-pool" # A logical pool of resources managed by the driver
+    generation: 1 # Incremented by the driver when the pool configuration changes
+    resourceSliceCount: 1 # Total number of ResourceSlices in this pool
+  nodeName: "node-1" # The name of the node where these resources are located
+  devices:
+    - name: "gpu-0" # Unique name for the device within the pool
+      attributes:
+        vendor:
+          string: "NVIDIA"
+        model:
+          string: "A100"
+      capacity:
+        memory:
+          value: "40Gi" # Example capacity: 40 GiB of memory
+```
 
 #### DeviceClass
 
@@ -304,7 +309,7 @@ A DeviceClas defines a category of devices.
 The DeviceClass may be installed with the driver.
 
 ```shell
-kubectl explain deviceclass
+kubectl explain deviceclass | head -n 8
 ```
 
 Output:
@@ -317,34 +322,6 @@ DESCRIPTION:
     DeviceClass is a vendor- or admin-provided resource that contains device
     configuration and selectors. It can be referenced in the device requests of
     a claim to apply these presets. Cluster scoped.
-    
-    This is an alpha type and requires enabling the DynamicResourceAllocation
-    feature gate.
-    
-FIELDS:
-  apiVersion	<string>
-    APIVersion defines the versioned schema of this representation of an object.
-    Servers should convert recognized schemas to the latest internal value, and
-    may reject unrecognized values. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-
-  kind	<string>
-    Kind is a string value representing the REST resource this object
-    represents. Servers may infer this from the endpoint the client submits
-    requests to. Cannot be updated. In CamelCase. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-
-  metadata	<ObjectMeta>
-    Standard object metadata
-
-  spec	<DeviceClassSpec> -required-
-    Spec defines what can be allocated and how to configure it.
-    
-    This is mutable. Consumers have to be prepared for classes changing at any
-    time, either because they get updated or replaced. Claim allocations are
-    done once based on whatever was set in classes at the time of allocation.
-    
-    Changing the spec automatically increments the metadata.generation number.
 ```
 
 A DeviceClass template is:
@@ -358,16 +335,47 @@ spec:
   - cel:
       expression: "device.driver == 'gpu.vendor.com'"
 ```
+Under the DeviceClass .spec.selectors, a Common Expression Language (CEL) exression is used to select a device
+
+Intel's DeviceClass is the following:
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: gpu.intel.com
+
+spec:
+  selectors:
+  - cel:
+      expression: device.driver == "gpu.intel.com"
+  extendedResourceName: intel.com/gpu
+```
+
+From `kubectl explain deviceclass.spec.extendedResourceName`:
+```shell
+ExtendedResourceName is the extended resource name for the devices of this
+    class. The devices of this class can be used to satisfy a pod's extended
+    resource requests. It has the same format as the name of a pod's extended
+    resource. It should be unique among all the device classes in a cluster. If
+    two device classes have the same name, then the class created later is
+    picked to satisfy a pod's extended resource requests. If two classes are
+    created at the same time, then the name of the class lexicographically
+    sorted first is picked.
+```
+
 
 #### ResourceClaim
-Describes a request for access to resources in the cluster, for use by workloads. 
+
+A ResourceClaim describes a request for access to resources in the cluster, for use by workloads. 
 For example, if a workload needs an accelerator device with specific properties, this is how that request is expressed. 
 The `status` stanza tracks whether this claim has been satisfied and what specific resources have been allocated.
 A ResourceClaim is a claim to use a specific DeviceClass and represents an acual resource allocation made by the resource driver.
 Users create ResourceClaims and reger to the DeviceClass they want to allocate resources for. The Pod can then use these resources with a ResourceClaim.
 
+Let's use `kubectl explain` to see the ResourceClaim's description:
+
 ```shell
-kubectl explain resourceclaim
+kubectl explain resourceclaim | head -n 10
 ```
 
 Output:
@@ -382,41 +390,15 @@ DESCRIPTION:
     with specific properties, this is how that request is expressed. The status
     stanza tracks whether this claim has been satisfied and what specific
     resources have been allocated.
-    
-    This is an alpha type and requires enabling the DynamicResourceAllocation
-    feature gate.
-    
-FIELDS:
-  apiVersion	<string>
-    APIVersion defines the versioned schema of this representation of an object.
-    Servers should convert recognized schemas to the latest internal value, and
-    may reject unrecognized values. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-
-  kind	<string>
-    Kind is a string value representing the REST resource this object
-    represents. Servers may infer this from the endpoint the client submits
-    requests to. Cannot be updated. In CamelCase. More info:
-    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-
-  metadata	<ObjectMeta>
-    Standard object metadata
-
-  spec	<ResourceClaimSpec> -required-
-    Spec describes what is being requested and how to configure it. The spec is
-    immutable.
-
-  status	<ResourceClaimStatus>
-    Status describes whether the claim is ready to use and what has been
-    allocated.
 ```
 
 
 ResourceClaims can be created manually by users or by Kubernetes from a ResourceClaimTemplate.
-If a ResourceClaimTemplate is used then the ResourceClaim is tied to a specific Pod and tied to the Pod's lifecycle.
-If a ResourceClaim is to be shared among multiple Pods or if the ResourceClaim is to be independent of a Pod's lifecycle then manually create the Resource Claim.
+If a ResourceClaimTemplate is used then the ResourceClaim is bound to the Pod that uses the ResourceClaimTemplate and bound to the Pod's lifecycle.
 
-Sample ResourceClaim:
+Independently created ResourceClaims can be shared among multiple Pods.
+
+Example ResourceClaim:
 ```yaml
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
@@ -425,25 +407,68 @@ metadata:
 spec:
   devices:
     requests:
-    - name: single-gpu-claim
+    - name: gpu-claim
       exactly:
         deviceClassName: gpu.vendor.com
         allocationMode: All
         selectors:
         - cel:
             expression: |-
-              device.attributes["driver.example.com"].type == "gpu" &&
-              device.capacity["driver.example.com"].memory == quantity("64Gi")             
+              device.attributes["driver.vendor.com"].type == "gpu" &&
+              device.capacity["driver.vendor.com"].memory == quantity("80Gi")
 ```
+This ResourceClaim Ceates requests devices in the `gpu.vendor.com` DeviceClass that matches both of the following parameters:
+- Devices that have a `driver.vendor.com/type` attribute with a value of gpu.
+- Devices that have 80Gi of capacity.
 
 #### ResourceClaimTemplate
 
+A ResourceClaimTemplate is a template to create ResourceClaims from for per-Pod access to resources.
 
-## Module 3: DRA Drivers
+Let's use `kubectl explain` to see the ResourceClaimTemplate's description:
+
+```shell
+kubectl explain resourceclaimtemplate | head -n 6
+```
+
+Output:
+```shell
+GROUP:      resource.k8s.io
+KIND:       ResourceClaimTemplate
+VERSION:    v1
+
+DESCRIPTION:
+    ResourceClaimTemplate is used to produce ResourceClaim objects.
+```
+
+ResourceClaimTemplates may look similar to ResourceClaims since they are used to generate ResourceClaims. Here's an example ResourceClaimTemplate that would produce the example ResourceClaim above:
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: resourceclaimtemplate-for-per-pod-resourceclaim
+spec:
+  spec:
+    devices:
+      requests:
+      - name: request
+        firstAvailable:
+        - name: gpu
+          deviceClassName: resource.vendor.com
+          selectors:
+          - cel:
+              expression: |-
+                device.attributes["driver.vendor.com"].type == "gpu" &&
+                device.capacity["driver.vendor.com"].memory == quantity("80Gi")
+```
+
+
+## Module 3: A Look into DRA Drivers
 
 ### NVIDIA DRA Driver
-The NVIDIA DRA Driver is installed via a helm chart
-Add the NVDIA helm repository
+The NVIDIA DRA Driver is installed via a helm chart.
+Let's dive into NVDIA's DRA Driver by first adding the NVIDIA helm repository:
 
 ```shell
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
@@ -455,7 +480,6 @@ Output:
 Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "nvidia" chart repository
 Update Complete. ⎈Happy Helming!⎈
-
 ```
 
 Let's confirm the chart:
@@ -474,7 +498,14 @@ type: application
 version: 25.8.0
 ```
 
-Let's look at the install confirmation parameters:
+Note: there will be a lot of output in the following steps, we will highlight key sections.
+The steps are to help show how you can introspect into a helm chart for a DRA driver.
+
+As we look into NVIDIA's DRA driver, we will see many references to ComputeDomain.
+With the NVIDIA DRA driver, workloads request a ComputeDomain then NVIDIA's DRA Driver for GPUs works to share GPU memory securely with NVLink, a high-speed interconnect for GPUs and CPUs, 7x faster than PCIe gen 5. 
+This allows Kubernetes to use a rack of small NVIDIA GPUs into a "supercomputer" such as the [GB200 NVL72](https://www.nvidia.com/en-us/data-center/gb200-nvl72/).
+
+Let's look at the configuration options:
 ```shell
 helm show values nvidia/nvidia-dra-driver-gpu
 ```
@@ -729,6 +760,9 @@ kubeletPlugin:
             values:
             - "true"
 ```
+
+As you can see, there are many options that can be configured during `helm install`.
+For more information, see the [NVIDIA docs](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator)
 
 Let's look at all the information from the chart:
 
@@ -1229,7 +1263,7 @@ controller:
             operator: "Exists"
 ```
 
-Now let's take a lok at the NVIDIA DRA driver's kubelet plugin:
+Now let's take a look at the NVIDIA DRA driver's kubelet plugin:
 
 ```shell
 helm show all nvidia/nvidia-dra-driver-gpu | grep -A 19 "kubeletPlugin:" 
@@ -1269,6 +1303,7 @@ helm install --dry-run nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
     --set resources.gpus.enabled=false \
     --set nvidiaDriverRoot=/run/nvidia/driver
 ```
+
 The command above uses an operator-provided GPU driver, for host-provided GPU drivers use the `--set resources.gpus.enabled=false` option
 
 Output:
@@ -1837,14 +1872,15 @@ spec:
   policyName: resourceslices-policy-nvidia-dra-driver-gpu
   validationActions: [Deny]
   # All ResourceSlices are matched.
-
 ```
+
+For more information on the NVIDIA DRA driver installation see https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html
 
 ### Intel DRA Driver
 Intel's GPU DRA Driver is also installed via a Helm chart.
 Let's take a look into the Intel GPU driver.
 
-Intel hosts its GPU DRA Driver on [GitHub](https://github.com/intel/intel-resource-drivers-for-kubernetes/blob/main/charts/intel-gpu-resource-driver/README.md)
+Intel hosts its GPU DRA Driver on [GitHub intel/intel-resource-drivers-for-kubernetes](https://github.com/intel/intel-resource-drivers-for-kubernetes/blob/main/charts/intel-gpu-resource-driver/README.md)
 
 Let's look at Intel's GPU DRA Driver through a dry-run simulation of the helm install:
 
@@ -2267,6 +2303,7 @@ clusterrolebinding.rbac.authorization.k8s.io/dranet created (dry run)
 serviceaccount/dranet created (dry run)
 daemonset.apps/dranet created (dry run)
 ```
+
 
 # Module 4: Deploy DRA and Workloads
 
