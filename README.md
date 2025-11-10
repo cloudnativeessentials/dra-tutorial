@@ -3615,43 +3615,38 @@ Create multiple Pods that reference the ResourceClaimTemplate:
 Use a Deployment to create multiple Pods that refers to the same ResourceClaimTemplate:
 
 ```shell
-curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deployment.yaml
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/job.yaml
 ```
 
 Output:
 ```shell
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: ollama-deployment
+  name: example-dra-job
   namespace: dra-tutorial
-  labels:
-    app: ollama-deployment
 spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: ollama-deployment
+  completions: 6
+  parallelism: 2
   template:
-    metadata:
-      labels:
-        app: ollama-deployment
     spec:
+      restartPolicy: Never
       containers:
-      - name: ollama-deploy
-        image: alpine/ollama:0.11.10
+      - name: busybox
+        image: busybox:1.37.0
+        command: ["env","sleep", "600"]
         resources:
           claims:
-          - name: separate-gpu
-      resourceClaimTemplate:
-      - name: seperate-gpu
+          - name: my-gpu-claim
+      resourceClaims:
+      - name: my-gpu-claim
         resourceClaimTemplateName: example-resource-claim-template
 ```
 
-Create the Deployment:
+Create the Job:
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deployment.yaml
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/job.yaml
 ```
 
 Output:
@@ -3660,7 +3655,7 @@ deployment.apps/ollama-deployment created
 ```
 
 ```shell
-kubectl -n dra-tutorial get pods,resourceclaims
+kubectl -n dra-tutorial get jobs,pods,resourceclaims
 NAME                                         READY   STATUS              RESTARTS   AGE
 pod/dra-example-driver-kubeletplugin-8tbxz   1/1     Running             0          144m
 pod/ollama                                   1/1     Running             0          121m
@@ -3676,7 +3671,7 @@ resourceclaim.resource.k8s.io/ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qf
 
 Describe each of the new ResourceClaims:
 ```shell
-kubectl describe resourceclaim ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-ctgtc -n dra-tutorial
+kubectl describe $(kubectl get resourceclaim -o name -n dra-tutorial | grep dra-job)
 ```
 
 Output:

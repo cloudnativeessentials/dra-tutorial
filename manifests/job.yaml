@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: example-dra-job
+  name: dra-job
   namespace: dra-tutorial
 spec:
   completions: 6
