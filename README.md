@@ -138,7 +138,7 @@ helm installed into /usr/local/bin/helm
 kind cluster is ready
 ```
 
-Let's test the cluster
+Test the cluster:
 ```shell
 kubectl version
 ```
@@ -163,11 +163,8 @@ kind-worker          Ready    <none>          2m14s   v1.34.0
 ```
 
 DRA graduated to stable in v1.34 on August 27, 2025.
-The core DRA APIs `resource.k8s.io/v1` graduated to stable.
-In v1.33, they were `resource.k8s.io/v1beta1`.
+In v1.34, the core DRA APIs `resource.k8s.io/v1` graduated to stable from `resource.k8s.io/v1beta1`.
 
-
-Before we look at the DRA resources, let's take a look at a generic DRA Resource Driver
 
 ## Module 2: DRA Under the Covers
 
