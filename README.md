@@ -3656,5 +3656,144 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tut
 
 Output:
 ```shell
-
+deployment.apps/ollama-deployment created
 ```
+
+```shell
+kubectl -n dra-tutorial get pods,resourceclaims
+NAME                                         READY   STATUS              RESTARTS   AGE
+pod/dra-example-driver-kubeletplugin-8tbxz   1/1     Running             0          144m
+pod/ollama                                   1/1     Running             0          121m
+pod/ollama-deployment-6d84cb6cd4-jfn2t       0/1     ContainerCreating   0          66s
+pod/ollama-deployment-6d84cb6cd4-sztwv       0/1     ContainerCreating   0          66s
+pod/ollama2                                  1/1     Running             0          30m
+
+NAME                                                                                  STATE                AGE
+resourceclaim.resource.k8s.io/example-resource-claim                                  allocated,reserved   137m
+resourceclaim.resource.k8s.io/ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-ctgtc   allocated,reserved   66s
+resourceclaim.resource.k8s.io/ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qfdj4   allocated,reserved   66s
+```
+
+Describe each of the new ResourceClaims:
+```shell
+kubectl describe resourceclaim ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-ctgtc -n dra-tutorial
+```
+
+Output:
+```shell
+Name:         ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-ctgtc
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  resource.kubernetes.io/pod-claim-name: my-gpu-claim
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-10T20:55:02Z
+  Finalizers:
+    resource.kubernetes.io/delete-protection
+  Generate Name:  ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-
+  Owner References:
+    API Version:           v1
+    Block Owner Deletion:  true
+    Controller:            true
+    Kind:                  Pod
+    Name:                  ollama-deployment-6d84cb6cd4-jfn2t
+    UID:                   995ce42c-5cb9-40a4-9904-453dfc21071b
+  Resource Version:        29323
+  UID:                     96bba17d-19c1-4597-9026-76c839585086
+Spec:
+  Devices:
+    Requests:
+      First Available:
+        Allocation Mode:    ExactCount
+        Count:              1
+        Device Class Name:  gpu.example.com
+        Name:               80gi
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              req-0
+Status:
+  Allocation:
+    Devices:
+      Results:
+        Device:   gpu-2
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  req-0/80gi
+    Node Selector:
+      Node Selector Terms:
+        Match Fields:
+          Key:       metadata.name
+          Operator:  In
+          Values:
+            kind-worker
+  Reserved For:
+    Name:      ollama-deployment-6d84cb6cd4-jfn2t
+    Resource:  pods
+    UID:       995ce42c-5cb9-40a4-9904-453dfc21071b
+Events:        <none>
+```
+
+Describe the other one:
+
+```shell
+kubectl describe resourceclaim ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qfdj4 -n dra-tutorial
+```
+
+```shell
+Name:         ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qfdj4
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  resource.kubernetes.io/pod-claim-name: my-gpu-claim
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-10T20:55:02Z
+  Finalizers:
+    resource.kubernetes.io/delete-protection
+  Generate Name:  ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-
+  Owner References:
+    API Version:           v1
+    Block Owner Deletion:  true
+    Controller:            true
+    Kind:                  Pod
+    Name:                  ollama-deployment-6d84cb6cd4-sztwv
+    UID:                   d0ddab1a-cee5-467e-9237-f06363e1d0de
+  Resource Version:        29324
+  UID:                     0cd309df-0b5f-4639-b6f3-1312ba4a0c0f
+Spec:
+  Devices:
+    Requests:
+      First Available:
+        Allocation Mode:    ExactCount
+        Count:              1
+        Device Class Name:  gpu.example.com
+        Name:               80gi
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              req-0
+Status:
+  Allocation:
+    Devices:
+      Results:
+        Device:   gpu-3
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  req-0/80gi
+    Node Selector:
+      Node Selector Terms:
+        Match Fields:
+          Key:       metadata.name
+          Operator:  In
+          Values:
+            kind-worker
+  Reserved For:
+    Name:      ollama-deployment-6d84cb6cd4-sztwv
+    Resource:  pods
+    UID:       d0ddab1a-cee5-467e-9237-f06363e1d0de
+Events:        <none>
+```
+
+In this example, the ResourceClaims from the ResourceClaimTemplate used different GPUs.

@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-dra-job
+spec:
+  completions: 5
+  parallelism: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: busybox
+        image: busybox:1.37.0
+        command: ["env","sleep", "600"]
+        resources:
+          claims:
+          - name: my-gpu-claim
+      resourceClaims:
+      - name: my-gpu-claim
+        resourceClaimTemplateName: example-resource-claim-template
