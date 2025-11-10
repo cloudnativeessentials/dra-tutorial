@@ -3537,4 +3537,29 @@ Let's look at a ResourceClaimTemplate:
 
 
 ```shell
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaimtemplate.yaml
 ```
+
+Output:
+```shell
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+ name: example-resource-claim-template
+ namespace: dra-tutorial
+spec:
+  spec:
+    devices:
+      requests:
+      - name: req-0
+        firstAvailable:
+        - name: 80gi 
+          deviceClassName: gpu.example.com
+          allocationMode: ExactCount
+          count: 1
+          selectors:
+          - cel:
+              expression: |-
+                device.capacity["gpu.example.com"].memory == quantity("80Gi")
+```
+This ResourceClaimTemplate requests for one 80Gi device 
