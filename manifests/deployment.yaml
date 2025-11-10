@@ -20,7 +20,7 @@ spec:
         image: alpine/ollama:0.11.10
         resources:
           claims:
-          - name: separate-gpu
-      resourceClaimTemplate:
-      - name: seperate-gpu
+          - name: my-gpu-claim
+      resourceClaims:
+      - name: my-gpu-claim
         resourceClaimTemplateName: example-resource-claim-template

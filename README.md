@@ -3575,6 +3575,41 @@ Output:
 resourceclaimtemplate.resource.k8s.io/example-resource-claim-template created
 ```
 
+Take a look into the ResourceClaimTemplate with `kubectl describe`:
+
+```shell
+kubectl describe resourceclaimtemplate -n dra-tutorial
+```
+
+Output:
+```shell
+Name:         example-resource-claim-template
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaimTemplate
+Metadata:
+  Creation Timestamp:  2025-11-10T20:37:06Z
+  Resource Version:    27725
+  UID:                 6a5189bb-cd4c-4cd0-afc7-681d31c7bf3f
+Spec:
+  Metadata:
+  Spec:
+    Devices:
+      Requests:
+        First Available:
+          Allocation Mode:    ExactCount
+          Count:              1
+          Device Class Name:  gpu.example.com
+          Name:               80gi
+          Selectors:
+            Cel:
+              Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+        Name:              req-0
+Events:                    <none>
+```
+
 Create multiple Pods that reference the ResourceClaimTemplate:
 
 Use a Deployment to create multiple Pods that refers to the same ResourceClaimTemplate:
@@ -3621,4 +3656,5 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tut
 
 Output:
 ```shell
+
 ```
