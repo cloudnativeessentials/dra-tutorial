@@ -3601,10 +3601,10 @@ Spec:
           Allocation Mode:    ExactCount
           Count:              1
           Device Class Name:  gpu.example.com
-          Name:               80gi
+          Name:               40gi
           Selectors:
             Cel:
-              Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+              Expression:  device.capacity["gpu.example.com"].memory > quantity("40Gi")
         Name:              req-0
 Events:                    <none>
 ```
