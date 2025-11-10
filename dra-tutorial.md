@@ -9,15 +9,16 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
 
-[Module 1 - Introduction to Dynamic Resource Allocation (15 minutes)](#module-1-introduction-to-dynamic-resource-allocation)
-7 minutes - [DRA Overview](#dra-overview)
-7 minutes - [Cluster Setup (kind on RHEL)](#cluster-setup)
+[Module 1 - Introduction to Dynamic Resource Allocation](#module-1-introduction-to-dynamic-resource-allocation) 15 minutes
+- [DRA Overview](#dra-overview) 7 minutes
+- [Cluster Setup (kind on RHEL)](#cluster-setup) 10 minutes
 
 [Module 2 - DRA Under the Covers (15 minutes)](#module-2-dra-under-the-covers)
-5 minutes - [DRA Resource Driver](#dra-resource-driver)
-8 minutes - [DRA Resources](#dra-resources)
-            - [DRA Driver](#dra-driver-typically-a-daemonset)
-            - [ResourceSlice](#resourceslice)
+- [DRA Resource Driver](#dra-resource-driver) 5 minutes
+- [DRA Resources](#dra-resources) 8 minutes
+  - [DRA Driver](#dra-driver-typically-a-daemonset)
+  - [ResourceSlice](#resourceslice)
+  - [DeviceClass](#deviceclass)
 
 Module 3 - DRA Drivers (15 minutes)
 5 minutes - Intel Drivers
