@@ -85,7 +85,7 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
 Go to the workshop platform to obtain a VM:
-<img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="200"/>
+<br><img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="800"/>
 
 ![Red Hat Demo Platform](./images/initial-login.png)
 
@@ -102,6 +102,10 @@ Run the install script:
 ```bash
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
+
+##
+<tab><tab>curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
+
 
 Output:
 
