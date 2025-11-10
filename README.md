@@ -2262,7 +2262,7 @@ daemonset.apps/dranet created (dry run)
 
 # Module 4: Deploying DRA and Workloads
 
-## DeviceClass
+## Deploying a DeviceClass
 
 Create the `dra-tutorial` namespace:
 ```shell
@@ -2372,7 +2372,7 @@ deviceclass.resource.k8s.io/gpu.example.com created
 ```
 
 
-## RBAC
+## Deploying RBAC Permissions for the DRA Driver
 Before we deploy a DRA driver, let's deploy RBAC resources like the ServiceAccount, ClusterRole, ClusterRoleBinding
 
 Let's take a look at the ServiceAccount, ClusterRole, ClusterRoleBinding that binds the ClusterRole to the Service Account:
@@ -2578,163 +2578,7 @@ NAME                                         READY   STATUS    RESTARTS   AGE
 pod/dra-example-driver-kubeletplugin-q7whd   1/1     Running   0          2m17s
 ```
 
-## ResourceSlice
-
-Describe the ResourceSlice to see information of the devices on the node
-
-```shell
-kubectl describe $(kubectl get resourceslice -o name)
-```
-
-Output:
-```shell
-Name:         kind-worker-gpu.example.com-64xtr
-Namespace:    
-Labels:       <none>
-Annotations:  <none>
-API Version:  resource.k8s.io/v1
-Kind:         ResourceSlice
-Metadata:
-  Creation Timestamp:  2025-11-06T06:52:11Z
-  Generate Name:       kind-worker-gpu.example.com-
-  Generation:          1
-  Owner References:
-    API Version:     v1
-    Controller:      true
-    Kind:            Node
-    Name:            kind-worker
-    UID:             e46b9945-d663-49d0-97bd-ff9640b821df
-  Resource Version:  1967
-  UID:               38823e34-ae11-4356-8565-97c7e989ca0e
-Spec:
-  Devices:
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  2
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-6ab67185-8eff-3a23-32fd-75bfbe37b488
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-2
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  3
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-6b77fb80-2d68-809d-4bf1-285e5f47dcc5
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-3
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  4
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-417d66cd-4546-0786-59a3-ef7eb54c564d
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-4
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  5
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-f0fdf728-dccb-f484-bbf5-33f63a90b820
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-5
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  6
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-121b8219-b8d6-015c-b2eb-1e320ee07510
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-6
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  0
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-4cbf87f3-433e-6717-5588-c33e6886832f
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-0
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  1
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-58bd415e-dee8-f0a5-ca03-02d000554b1a
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-1
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  7
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-f270be4e-7cd6-da75-39e7-b707122f9b70
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-7
-    Attributes:
-      Driver Version:
-        Version:  1.0.0
-      Index:
-        Int:  8
-      Model:
-        String:  LATEST-GPU-MODEL
-      Uuid:
-        String:  gpu-091ffa42-7640-9cfd-c78e-4fbb544c2a00
-    Capacity:
-      Memory:
-        Value:  80Gi
-    Name:       gpu-8
-  Driver:       gpu.example.com
-  Node Name:    kind-worker
-  Pool:
-    Generation:            1
-    Name:                  kind-worker
-    Resource Slice Count:  1
-Events:                    <none>
-```
-
-## ResourceClaim
+#### ResourceClaim
 
 Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest:
 
@@ -2784,7 +2628,7 @@ NAME                     STATE     AGE
 example-resource-claim   pending   28s
 ```
 
-## Pod
+#### Workload
 
 Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image.
 To use a real GPU, you can use the `ollama/ollama` container image.
