@@ -9,11 +9,11 @@ spec:
       requests:
       - name: req-0
         firstAvailable:
-        - name: more-than-40gi 
+        - name: 80gi-gpu
           deviceClassName: gpu.example.com
           allocationMode: ExactCount
           count: 1
           selectors:
           - cel:
               expression: |-
-                device.capacity["gpu.example.com"].memory >= quantity("40Gi")
+                device.capacity["gpu.example.com"].memory == quantity("80Gi")
