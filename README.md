@@ -96,9 +96,16 @@ ssh labuser@
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
 Run the install script:
-{% capture code %}
+``` shell
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
-{% endcapture %}
+```
+{% capture code %}POST /ts_dataservice/v1/public/session HTTP/1.1
+Host: client.mydomain.com Accept: application/json Content-type: application/json
+{
+"username":"",
+"password":""
+}{% endcapture %}
+{% include code.html code=code lang="javascript"%}
 
 Output:
 
