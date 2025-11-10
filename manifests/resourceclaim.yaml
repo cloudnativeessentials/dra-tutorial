@@ -9,7 +9,8 @@ spec:
      - name: example-gpu
        exactly:
          deviceClassName: gpu.example.com
-         allocationMode: All
+         allocationMode: ExactCount
+         count: 1
          selectors:
           - cel:
               expression: |-

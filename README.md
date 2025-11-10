@@ -1874,6 +1874,33 @@ spec:
   # All ResourceSlices are matched.
 ```
 
+The NVIDIA DRA helm chart installed the following:
+- Namespace: nvidia-dra-driver-gpu
+- ServiceAccount: compute-domain-daemon-service-account
+- ServiceAccount: nvidia-dra-driver-gpu-service-account-controller
+- ServiceAccount: nvidia-dra-driver-gpu-service-account-kubeletplugin
+- ClusterRole: compute-domain-daemon-role
+- ClusterRole: nvidia-dra-driver-gpu-clusterrole-controller
+- ClusterRole: nvidia-dra-driver-gpu-clusterrole-kubeletplugin
+- ClusterRoleBinding: compute-domain-daemon-role-binding-nvidia-dra-driver-gpu
+  - binds ServiceAccount compute-domain-daemon-service-account and ClusterRole compute-domain-daemon-role
+- ClusterRoleBinding: nvidia-dra-driver-gpu-clusterrole-binding-controller-nvidia-dra-driver-gpu
+  - binds ServiceAccount nvidia-dra-driver-gpu-service-account-controller and ClusterRole nvidia-dra-driver-gpu-clusterrole-controller
+- ClusterRoleBinding: nvidia-dra-driver-gpu-clusterrole-binding-kubeletplugin-nvidia-dra-driver-gpu
+  - binds ServiceAccount nvidia-dra-driver-gpu-service-account-kubeletplugin and ClusterRole nvidia-dra-driver-gpu-clusterrole-kubeletplugin
+- Role: nvidia-dra-driver-gpu-role-controller
+- Role: nvidia-dra-driver-gpu-role-kubeletplugin
+- RoleBinding: nvidia-dra-driver-gpu-role-binding-controller
+  - binds ServiceAccount nvidia-dra-driver-gpu-service-account-controller and Role nvidia-dra-driver-gpu-role-controller
+- RoleBinding: nvidia-dra-driver-gpu-role-binding-kubeletplugin
+  - binds ServiceAccount nvidia-dra-driver-gpu-service-account-kubeletplugin and Role nvidia-dra-driver-gpu-role-kubeletplugin
+- DaemonSet: nvidia-dra-driver-gpu-kubelet-plugin
+- Deployment: nvidia-dra-driver-gpu-controller
+- DeviceClass: compute-domain-daemon.nvidia.com
+- DeviceClass: compute-domain-default-channel.nvidia.com
+- ValidatingAdmissionPolicy: resourceslices-policy-nvidia-dra-driver-gpu
+- ValidatingAdmissionPolicyBinding: resourceslices-policy-nvidia-dra-driver-gpu
+
 For more information on the NVIDIA DRA driver installation see https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html
 
 ### Intel DRA Driver
@@ -2089,11 +2116,26 @@ NOTES:
 Thank you for installing intel-gpu-resource-driver-chart.
 ```
 
-Since our environment does not have real GPUs, in the next module we will install example GPU drivers
+The Intel DRA helm chart installed the following:
+- Namespace: intel-gpu-resource-driver
+- ServiceAccount: intel-gpu-sa
+- ClusterRole: intel-gpu-resource-driver-role
+- ClusterRoleBinding: intel-gpu-resource-driver-rolebinding
+  - binds ServiceAccount intel-gpu-sa and ClusterRole intel-gpu-resource-driver-role
+- DaemonSet: intel-gpu-resource-driver-kubelet-plugin
+- DeviceClass: gpu.intel.com
+- ValidatingAdmissionPolicy: resourceslices-policy-dra-kubelet-plugin-gpu
+- ValidatingAdmissionPolicyBinding: resourceslices-policy-dra-kubelet-plugin-gpu
+
+Since our environment does not have real GPUs, in the next module we will install example GPU drivers.
 
 ### DRANET 
+
 Dynamic Resource Allocation is not specific to GPUs. 
-Google's DRANET is a Kubernetes Network Driver for high-performance networking that uses DRA.
+Google's DRANET is a Kubernetes Network Driver for high-performance networking.
+The DRANET driver communicated with the kubelet though the DRA API and the container runtime via the node resource interface.
+Then the Pod's network namespace is created, the container runtime initiates a GRPC call to DRANET via node resource interface.
+
 More on DRANET can be found here:
 https://github.com/google/dranet
 https://dranet.dev/docs/
@@ -2304,6 +2346,112 @@ serviceaccount/dranet created (dry run)
 daemonset.apps/dranet created (dry run)
 ```
 
+A ResourceSlice would be created similar to the following:
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  creationTimestamp: "2024-12-15T23:41:51Z"
+  generateName: gke-aojea-dra-multi-nic-985b8c20-jg5l-dra.net-
+  generation: 1
+  name: gke-aojea-dra-multi-nic-985b8c20-jg5l-dra.net-8nq9c
+  ownerReferences:
+  - apiVersion: v1
+    controller: true
+    kind: Node
+    name: gke-aojea-dra-multi-nic-985b8c20-jg5l
+    uid: 0146a07e-df67-401d-b3a5-dddb02f50b6e
+  resourceVersion: "1471803"
+  uid: 535724d7-a573-49e1-8f3b-4e644405375a
+spec:
+  devices:
+    - basic:
+        attributes:
+          dra.net/alias:
+            string: ""
+          dra.net/cloudNetwork:
+            string: dra-1-vpc
+          dra.net/encapsulation:
+            string: ether
+          dra.net/ifName:
+            string: gpu7rdma0
+          dra.net/ipv4:
+            string: 10.0.8.8
+          dra.net/mac:
+            string: 9a:41:2e:4f:86:16
+          dra.net/mtu:
+            int: 8896
+          dra.net/numaNode:
+            int: 1
+          dra.net/pciAddressBus:
+            string: c8
+          dra.net/pciAddressDevice:
+            string: "00"
+          dra.net/pciAddressDomain:
+            string: "0000"
+          dra.net/pciAddressFunction:
+            string: "0"
+          dra.net/pciVendor:
+            string: Mellanox Technologies
+          dra.net/rdma:
+            bool: true
+          dra.net/sriov:
+            bool: false
+          dra.net/state:
+            string: up
+          dra.net/type:
+            string: device
+          dra.net/virtual:
+            bool: false
+      name: gpu7rdma0
+```
+
+To use DRANET, create the DeviceClass and ResourceClaim (from the DRANET docs):
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: dranet-cloud
+spec:
+  selectors:
+    - cel:
+        expression: device.driver == "dra.net"
+    - cel:
+        expression: has(device.attributes["dra.net"].cloudNetwork)
+---
+apiVersion: resource.k8s.io/v1
+kind:  ResourceClaim
+metadata:
+  name: cloud-network-dra-net
+spec:
+  devices:
+    requests:
+    - name: request-cloud-net
+      exactly:
+        deviceClassName: dranet-cloud
+        selectors:
+          - cel:
+              expression: device.attributes["dra.net"].cloudNetwork == "dra-1-vpc"
+```
+
+An example Pod looks like:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-dra-net
+  labels:
+    app: pod-dra-net
+spec:
+  containers:
+  - name: ctr1
+    image: registry.k8s.io/e2e-test-images/agnhost:2.39
+  resourceClaims:
+  - name: net-1
+    resourceClaimName: cloud-network-dra-net
+```
 
 # Module 4: Deploy DRA and Workloads
 
@@ -2320,7 +2468,8 @@ namespace/dra-tutorial created
 ```
 
 Create the DeviceClass that represents the supported devices of the DRA driver.
-Let's take a look at the manifest for the DeviceClass
+Let's take a look at the manifest for the DeviceClass:
+
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deviceclass.yaml
 ```
@@ -2336,7 +2485,7 @@ spec:
   - cel: 
       expression: "device.driver == 'gpu.example.com'"
 ```
-Commen Express Language (CEL) can be used to filter for specific attributes 
+Commen Express Language (CEL) can be used to filter for specific attributes.
 
 Let's compare this DeviceClass with the ones from NVIDIA and Intel:
 
@@ -2375,7 +2524,6 @@ spec:
 # Source: nvidia-dra-driver-gpu/templates/validatingadmissionpolicy.yaml
 ```
 
-
 Intel:
 ```shell
 helm install --dry-run intel-gpu-resource-driver oci://ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart \
@@ -2404,7 +2552,6 @@ spec:
 ---
 ```
 
-
 Create the DeviceClass for the example DRA driver:
 
 ```shell
@@ -2416,8 +2563,8 @@ Output:
 deviceclass.resource.k8s.io/gpu.example.com created
 ```
 
-
 ## Create RBAC Authorization for the DRA Driver
+
 Before you deploy a DRA driver, create RBAC authorization for the DRA driver to control ResourceSlices, get Nodes, and get ResourceClaims.
 
 Let's take a look at the ServiceAccount, ClusterRole, ClusterRoleBinding that binds the ClusterRole to the Service Account:
@@ -2481,17 +2628,18 @@ clusterrole.rbac.authorization.k8s.io/dra-example-driver-role created
 clusterrolebinding.rbac.authorization.k8s.io/dra-example-driver-role-binding created
 ```
 
-
 ## PriorityClass
 
 Create the PriorityClass to prevent preemption of the DRA driver:
 
-First look at the PriorityClass:
+Let's look at the PriorityClass:
+
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/priorityclass.yaml
 ```
 
 Output:
+
 ```shell
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
@@ -2508,13 +2656,16 @@ Create the PriorityClass:
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/priorityclass.yaml
 ```
 
-Expected output:
+Output:
+
 ```shell
 priorityclass.scheduling.k8s.io/dra-driver-high-priority created
 ```
 
 ## Deploy the DRA Driver
+
 Before creating the example DRA driver, let's take a look at the DRA driver's manifest
+
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
 ```
@@ -2600,6 +2751,7 @@ spec:
 ```
 
 Create the DRA driver in a DaemonSet, the driver binary is in a container image:
+
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
 ```
@@ -2610,8 +2762,9 @@ daemonset.apps/dra-example-driver-kubeletplugin created
 ```
 
 Check the status of the DRA driver:
+
 ```shell
- kubectl get daemonset,pods -n dra-tutorial -l app.kubernetes.io/name=dra-example-driver
+kubectl get daemonset,pods -n dra-tutorial -l app.kubernetes.io/name=dra-example-driver
 ```
 
 Output:
@@ -2644,13 +2797,17 @@ spec:
      - name: example-gpu
        exactly:
          deviceClassName: gpu.example.com
-         allocationMode: All
+         allocationMode: ExactCount
+         count: 1
          selectors:
           - cel:
               expression: |-
                 device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
+
 This manifest creates ResourceClaim that requests devices in the gpu.example.com DeviceClass that have 80Gi of capacity.
+
+alloctionMode defines how devices are allocated, the options are `ExactCount` or `All` in which requests for all matching devices in the pool will be allocated
 
 Create the ResourceClaim:
 ```shell
