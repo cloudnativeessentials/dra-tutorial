@@ -85,9 +85,11 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
 Go to the workshop platform to obtain a VM:
+<img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="200"/>
+
 ![Red Hat Demo Platform](./images/initial-login.png)
 
-With the credentials, log into yoour VM
+With the credentials, log into your VM
 Log into your VM
 ```shell
 ssh labuser@
