@@ -69,13 +69,14 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
+The VMs provided are 2 CPU, 8 GB RAM, RHEL 9
 Go to the [workshop platform](https://catalog.demo.redhat.com/workshop/tetk9u) to obtain login instructions to a VM:
 <br><img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="800"/><br>
 
 <br><img src="./images/login-instructions.png" alt="login instructions" width="400"/><br>
 
 
-SSH into your VM:\
+SSH into your VM:
 Note: the following is an example, use the hostname provided to you in the above
 
 ```shell
@@ -3147,6 +3148,7 @@ Events:        <none>
 The ResourceClaim shows that the ollama Pod reserved gpu-7.
 It reserves only one GPU since the ResourceClaim had `allocationMode: ExactCount` and `count: 1`
 If the ResourceClaim had `allocationMode: All`, then the ResourceClaim would claim all devices that satisfies the request selection CEL expresion and the output would be similar to the following in which the ResouceClaim claims 9 GPUs for the Pod:
+
 ```shell
 Name:         example-resource-claim
 Namespace:    dra-tutorial
@@ -3251,6 +3253,35 @@ Output:
 ```shell
 NAME     READY   STATUS    RESTARTS   AGE
 ollama   1/1     Running   0          2m5s
+```
+
+Check the environment variables in the Ollama Pod:
+
+```shell
+kubectl -n dra-tutorial exec ollama -- env
+```
+
+Output:
+```shell
+PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+HOSTNAME=ollama
+SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+OLLAMA_HOST=0.0.0.0
+KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_NODE_NAME=kind-worker
+DRA_RESOURCE_DRIVER_NAME=gpu.example.com
+GPU_DEVICE_7_RESOURCE_CLAIM=a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a
+GPU_DEVICE_7=gpu-7
+GPU_DEVICE_7_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_7_TIMESLICE_INTERVAL=Default
+HOME=/root
 ```
 
 In the Ollama Pod, pull Meta's [llama 3.2 LLM](https://ollama.com/library/llama3.2):
@@ -3362,61 +3393,148 @@ Output:
 Overall, Kubernetes is a powerful container orchestration platform that offers several benefits and features that can help you manage your containers more effectively and efficiently.
 ```
 
-### Sharing Device
 Any difference in the response?
 
-Check the environment variables in the Ollama Pod:
+
+## Sharing ResoureClaim
+
+Let's add another Pod that references the same ResourceClaim.
+
+Let's look at the Pod manifest:
+
 ```shell
-kubectl -n dra-tutorial exec ollama -- env
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod2.yaml
+```
+
+Output:
+```shell
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ollama2
+  namespace: dra-tutorial
+  labels:
+    app: ollama2
+spec:
+  containers:
+  - name: ollama2
+    image: alpine/ollama:0.11.10
+    ports:
+        - name: http
+          containerPort: 11434
+          protocol: TCP
+    resources:
+      claims:
+      - name: gpu
+  resourceClaims:
+  - name: gpu
+    resourceClaimName: example-resource-claim
+```
+
+Create the Pod:
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod2.yaml
+```
+
+Output
+```shell
+pod/ollama2 created
+```
+
+Describe the ResourceClaim:
+
+```shell
+kubectl describe resourceclaim -n dra-tutorial example-resource-claim
+```
+
+Output:
+```shell
+Name:         example-resource-claim
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  <none>
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-10T18:38:11Z
+  Finalizers:
+    resource.kubernetes.io/delete-protection
+  Resource Version:  26739
+  UID:               a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a
+Spec:
+  Devices:
+    Requests:
+      Exactly:
+        Allocation Mode:    ExactCount
+        Count:              1
+        Device Class Name:  gpu.example.com
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              example-gpu
+Status:
+  Allocation:
+    Devices:
+      Results:
+        Device:   gpu-7
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  example-gpu
+    Node Selector:
+      Node Selector Terms:
+        Match Fields:
+          Key:       metadata.name
+          Operator:  In
+          Values:
+            kind-worker
+  Reserved For:
+    Name:      ollama
+    Resource:  pods
+    UID:       bc92ce32-b3fa-4632-bbe5-54c4553dbd1d
+    Name:      ollama2
+    Resource:  pods
+    UID:       aa09d590-c5b1-4c1e-87c8-730279af6bd2
+Events:        <none>
+```
+
+Check the environment variables for the new Pod:
+
+```shell
+kubectl -n dra-tutorial exec ollama2 -- env
+```
+
+Output:
+```shell
 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
-HOSTNAME=ollama
+HOSTNAME=ollama2
 SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 OLLAMA_HOST=0.0.0.0
-KUBERNETES_SERVICE_PORT_HTTPS=443
-KUBERNETES_PORT=tcp://10.96.0.1:443
-KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
-KUBERNETES_PORT_443_TCP_PROTO=tcp
 KUBERNETES_PORT_443_TCP_PORT=443
 KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
 KUBERNETES_SERVICE_HOST=10.96.0.1
 KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
 KUBERNETES_NODE_NAME=kind-worker
 DRA_RESOURCE_DRIVER_NAME=gpu.example.com
-GPU_DEVICE_6_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_6=gpu-6
-GPU_DEVICE_6_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_6_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_7_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_7_RESOURCE_CLAIM=a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a
 GPU_DEVICE_7=gpu-7
 GPU_DEVICE_7_SHARING_STRATEGY=TimeSlicing
 GPU_DEVICE_7_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_0_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_0=gpu-0
-GPU_DEVICE_0_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_0_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_3_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_3=gpu-3
-GPU_DEVICE_3_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_3_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_4_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_4=gpu-4
-GPU_DEVICE_4_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_4_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_5_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_5=gpu-5
-GPU_DEVICE_5_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_5_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_8_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_8=gpu-8
-GPU_DEVICE_8_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_8_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_1_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_1=gpu-1
-GPU_DEVICE_1_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_1_TIMESLICE_INTERVAL=Default
-GPU_DEVICE_2_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
-GPU_DEVICE_2=gpu-2
-GPU_DEVICE_2_SHARING_STRATEGY=TimeSlicing
-GPU_DEVICE_2_TIMESLICE_INTERVAL=Default
 HOME=/root
+```
+
+Both Pods are sharing GPU-7
+
+## ResourceClaimTemplate
+
+We can use a ResourceClaimTemplate to dynamically create ResourceClaims per-Pod.
+In this case, the ResourceClaims are not shareable.
+
+Let's look at a ResourceClaimTemplate:
+
+
+```shell
 ```
