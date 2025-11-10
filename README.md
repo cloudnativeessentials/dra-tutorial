@@ -93,17 +93,10 @@ Log into your VM
 ssh labuser@
 ```
 
-    <pre id="myCodeBlock">
-        <code class="language-js">
-            console.log('Hello, world!');
-        </code>
-    </pre>
-    <button class="btn" data-clipboard-target="#myCodeBlock code">Copy Code</button>
-    
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
 Run the install script:
-```bash
+```
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
 
