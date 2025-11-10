@@ -27,26 +27,10 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Intel DRA Driver](#intel-dra-driver) 5 minutes
 - [DRANET](#dranet) 5 minutes
 
-Module 4 - Deploying Workloads that use DRA (17 minutes)
-6 minutes - Explore Workload YAML that uses DRA
+[Module 4 - Deploying DRA and Workloads](#module-4-deploying-dra-and-workloads) (17 minutes) 
+- 6 minutes - Explore Workload YAML that uses DRA
 6 minutes - Run Workload YAML that uses DRA
 5 minutes - Confirm DRA uses
-
-Module 4
-5 minutes - Review benefits of DRA
-5 minutes - Explore YAML on how to use the different benefits of DRA
-Building a DRA driver?
-GPU examples?
-
-
-
-## Old way (maybe don't include)
-Node Feature Discovery
-GPU Feature Discovery
-Device Plugin
-Container Toolkit (on the host), shim on top of containerd or docker on top of runc, to handle GPU integration with device driver
-CUDA 
-Device Driver (from vendor e.g. AMD, NVIDIA, on the host)
 
 ## Module 1: Introduction to Dynamic Resource Allocation
 Kubernetes v1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
@@ -154,9 +138,6 @@ Client Version: v1.34.1
 Kustomize Version: v5.7.1
 Server Version: v1.34.0
 ```
-DRA graduated to stable in v1.34 on August 27, 2025.
-The core DRA APIs `resource.k8s.io/v1` graduated to stable.
-In v1.33, they were `resource.k8s.io/v1beta1`.
 
 Check the cluster's nodes:
 ```shell
@@ -169,6 +150,11 @@ NAME                 STATUS   ROLES           AGE     VERSION
 kind-control-plane   Ready    control-plane   2m27s   v1.34.0
 kind-worker          Ready    <none>          2m14s   v1.34.0
 ```
+
+DRA graduated to stable in v1.34 on August 27, 2025.
+The core DRA APIs `resource.k8s.io/v1` graduated to stable.
+In v1.33, they were `resource.k8s.io/v1beta1`.
+
 
 Before we look at the DRA resources, let's take a look at a generic DRA Resource Driver
 
