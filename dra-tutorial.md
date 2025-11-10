@@ -11,14 +11,10 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 
 Module 1 - Introduction to Dynamic Resource Allocation (15 minutes)
 5 minutes - What is DRA
-Motivation
-5 minutes - Difference between DRA and Device Plugin
-Benefits
-5 minutes - Explain why the change
-5 minutes - Cluster setup (kind on RHEL)
+5 minutes - Cluster Setup (kind on RHEL)
 
-Module 2 - DRA under the covers (15 minutes)
-5 minutes - Explain DRA under the covers
+Module 2 - DRA Under the Covers (15 minutes)
+5 minutes - DRA Resource Driver
 5 minutes - Explore DRA Resources
 
 Module 3 - DRA Drivers (15 minutes)
@@ -50,18 +46,24 @@ Device Driver (from vendor e.g. AMD, NVIDIA, on the host)
 ## Module 1: Introduction to Dynamic Resource Allocation (DRA)
 Kubernetes v1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
 Workloads need more than CPU and memory but also need specialized hardware.
-DRA is a new API for Pods to request and access specialized hardware like accelerators or network-attached devices.
+DRA is a new API for Pods to request and access specialized hardware like accelerators such as GPUs, field programmable gate arrays (FPGAs), Tensor Processing Unit (TPU) or network-attached devices.
 Support for hardware are provided by vendors via DRA drivers.
 
 The previous way of accessing specialized hardware was with node plugins and had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric.
 
 Node plugins are good for requesting single, linear quantity of resources.
 
-Let's take a look at a few vendor examples: NVIDIA and Intel
+Later, you will take a look at a few vendor's DRA drivers: NVIDIA and Intel
 NVIDIA offers DRA driers for two types of resources: GPUs and ComputeDomains.
 
+Compared to device plugins, DRA offers the following benefits:
+- device filtering with Common Expression Language (CEL) for fine-grained filtering
+- device sharing 
+- centralized device categorization
 
-## DRA Overview
+
+### DRA Overview
+Dynamic Resource Allocation 
 Like with Device Plugin, you need a driver.
 The DRA driver (installed locally) has a component called the kubelet-plugin (typically a DaemonSet) that talks to the node's kubelet about the device and prepares the device to be used.
 
@@ -73,7 +75,7 @@ When a Pod wants to use a device, the user creates a ResourceClaim or uses a Res
 
 A cluster admin installs a corresponding DeviceClass that has device configuration and selectors for the device.
 
-## Cluster setup
+### Cluster setup
 
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
@@ -150,7 +152,9 @@ kind-worker          Ready    <none>          2m14s   v1.34.0
 
 Before we look at the DRA resources, let's take a look at a generic DRA Resource Driver
 
-## DRA Resource Driver
+## Module 2 - DRA Under the Covers
+
+### DRA Resource Driver
 2 components that coordinate with each other
 - node-local kubelet plugin (DaemonSet) on nodes with the advertised device
 - centralized controller runing in HA
@@ -176,7 +180,7 @@ Node-local kubelet plugin
   - kubelet-plugin tracks resources in a checkpoint file on the local filesystem
 
 Scheduling: in general, the Kubernetes scheduler and DRA driver controller communicate through the Kubernetes API server
-by updated a `PodSchedulingContext` object which leads to the allocation of the ResourceClaim and Pod to a Node with the available resource.
+by updating a `PodSchedulingContext` object which leads to the allocation of the ResourceClaim and Pod to a Node with the available resource.
 
 Modes of Allocating Resources with DRA (specified in the ResourceClaim)
 - Immediate
@@ -187,8 +191,9 @@ Modes of Allocating Resources with DRA (specified in the ResourceClaim)
   - Resource availability is considered in part of overall Pod scheduling
   - Delays the allocation of the ResourceClaim until the first Pod that references it is scheduled
 
-## Overview
-DRA Driver
+### DRA Resources
+
+#### DRA Driver (typically a DaemonSet)
 - typically installed as a DaemonSet and may use node affinity to schedule DaemonSets appropriately
 e.g. feature.node.kubernetes.io/pci-10de.present=true or feature.node.kubernetes.io/cpu-model.vendor_id=NVIDIA  or nvidia.com/gpu.present=true
 
@@ -205,9 +210,7 @@ Can be referenced by multiple Pods if the device can be shared and not tied to a
 
 ResourceClaimTemplate: template to generate resource claim. When a ResourceClaim is created from a ResourceClaimTemplate, it is tied to the Pod's lifecycle
 
-
-
-## ResourceSlice
+#### ResourceSlice
 Represents the available devices represented by a driver on the node.
 The DRA driver creates the ResourceSlice.
 The Kubernetes scheduler uses ResourceSlices to determine where to allocate Pods.
@@ -276,7 +279,7 @@ FIELDS:
 ```
   
 
-## DeviceClass
+#### DeviceClass
 
 The DeviceClass resource correspondes a resource driver with a named resource in the cluster.
 Contains pre-defined selection criteria for certain devices and configuration for them.
@@ -342,7 +345,7 @@ spec:
       expression: "device.driver == 'gpu.vendor.com'"
 ```
 
-## ResourceClaim
+#### ResourceClaim
 Describes a request for access to resources in the cluster, for use by workloads. 
 For example, if a workload needs an accelerator device with specific properties, this is how that request is expressed. 
 The `status` stanza tracks whether this claim has been satisfied and what specific resources have been allocated.
@@ -419,7 +422,9 @@ spec:
               device.capacity["driver.example.com"].memory == quantity("64Gi")             
 ```
 
-## NVIDIA DRA Driver
+## Module 3 - DRA Drivers
+
+### NVIDIA DRA Driver
 The NVIDIA DRA Driver is installed via a helm chart
 Add the NVDIA helm repository
 
@@ -1146,7 +1151,7 @@ helm show all nvidia/nvidia-dra-driver-gpu | grep -A 21 "controller:"
 ```
 
 Output:
-```
+```shell
 # - CD controller:
 #   - Confirm cleanup of stale objects
 # - k8s client-go: feature gates
@@ -1818,7 +1823,7 @@ spec:
 
 ```
 
-## Intel DRA Driver
+### Intel DRA Driver
 Intel's GPU DRA Driver is also installed via a Helm chart.
 Let's take a look into the Intel GPU driver.
 
@@ -2033,7 +2038,7 @@ Thank you for installing intel-gpu-resource-driver-chart.
 
 Since our environment does not have real GPUs, in the next module we will install example GPU drivers
 
-## DRANET 
+### DRANET 
 Dynamic Resource Allocation is not specific to GPUs. 
 Google's DRANET is a Kubernetes Network Driver for high-performance networking that uses DRA.
 More on DRANET can be found here:
@@ -2775,6 +2780,8 @@ example-resource-claim   pending   28s
 Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image.
 To use a real GPU, you can use the `ollama/ollama` container image.
 
+Ollama is a tool that runs LLMs locally.
+Ollama can also host LLMs 
 Let's take a look at the Pod manifest:
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod.yaml
@@ -2800,12 +2807,6 @@ spec:
     resources:
       claims:
       - name: gpu
-    # requests:
-      #  nvidia.com/gpu: "1"
-  # tolerations:
-  # - key: nvidia.com/gpu
-    # effect: NoSchedule
-    # operator: Exists
   resourceClaims:
   - name: gpu
     resourceClaimName: example-resource-claim
@@ -2917,6 +2918,16 @@ Events:        <none>
 ```
 Any additional Pods that use this ResourceClaim are also listed under `Reserved For:`
 
+Check how the DRA driver handled device allocation:
+```shell
+kubectl logs -l app.kubernetes.io/name=dra-example-driver -n dra-tutorial
+I1106 20:02:27.940433       1 health.go:70] "connecting to registration socket" path="unix:///var/lib/kubelet/plugins_registry/gpu.example.com-reg.sock"
+I1106 20:02:27.940658       1 health.go:83] "connecting to DRA socket" path="unix:///var/lib/kubelet/plugins/gpu.example.com/dra.sock"
+I1106 20:02:27.940997       1 health.go:103] "starting healthcheck service" addr="[::]:51515"
+I1106 20:02:48.015898       1 driver.go:107] PrepareResourceClaims is called: number of claims: 1
+I1106 20:02:48.019926       1 driver.go:134] Returning newly prepared devices for claim '8dd46879-44b5-4d07-b546-7aec29a5016b': [{[example-gpu] kind-worker gpu-6 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-6]} {[example-gpu] kind-worker gpu-7 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-7]} {[example-gpu] kind-worker gpu-0 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-0]} {[example-gpu] kind-worker gpu-3 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-3]} {[example-gpu] kind-worker gpu-4 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-4]} {[example-gpu] kind-worker gpu-5 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-5]} {[example-gpu] kind-worker gpu-8 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-8]} {[example-gpu] kind-worker gpu-1 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-1]} {[example-gpu] kind-worker gpu-2 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=8dd46879-44b5-4d07-b546-7aec29a5016b-gpu-2]}]
+
+```
 Check the Pod
 
 ```shell
@@ -2950,19 +2961,182 @@ success
 Create a NodePort Service to expose the Ollama Pod
 
 ```shell
-curl -w "/n" 
-```
-```
-kubectl apply -f
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/service.yaml
 ```
 
-Test the Llama model:
+Output:
+```shell
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-service
+  namespace: dra-tutorial
+spec:
+  type: NodePort
+  selector:
+    app: ollama
+  ports:
+    - protocol: TCP
+      port: 11434
+      targetPort: 11434
+```
+
 
 ```shell
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama3.2",
-  "prompt": "What is Kubernetes?"
-}'
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/service.yaml
+```
+
+Output:
+``shell
+service/ollama-service created
+```
+Test the Llama model:
+This will take 5 minutes
+```shell
+kubectl -n dra-tutorial exec ollama -- ollama run llama3.2 "what is kubernetes"
+```
+
+Output:
+```shell
+Kubernetes (also known as K8s) is an open-source container orchestration system for automating the deployment, scaling, and management of containerized applications. It was originally designed by Google, and is now maintained by the Cloud Native Computing Foundation (CNCF).
+
+Kubernetes provides a platform-agnostic way to deploy, manage, and scale applications in a cloud-native environment, which allows for greater flexibility, scalability, and reliability. Here are some key features of Kubernetes:
+
+**Key Features:**
+
+1. **Container Orchestration:** Kubernetes manages the lifecycle of containers across multiple hosts, ensuring that containers are deployed, scaled, and terminated as needed.
+2. **Self-healing:** If a container fails or is terminated, Kubernetes automatically redeployes it to ensure high availability.
+3. **Scaling:** Kubernetes allows you to scale your applications horizontally (add more replicas) or vertically (increase resources).
+4. **Resource Management:** Kubernetes manages resource allocation and deallocation, ensuring that resources are used efficiently.
+5. **Networking:** Kubernetes provides a built-in networking system for containers, allowing them to communicate with each other.
+6. **Service Discovery:** Kubernetes provides a service discovery mechanism, making it easy to find and access services.
+7. **Security:** Kubernetes provides a secure environment by isolating applications and limiting access.
+
+**Components:**
+
+1. **Pods:** The basic execution unit in Kubernetes, consisting of one or more containers.
+2. **ReplicaSets:** Ensures that a specified number of replicas (i.e., copies) of a Pod are running at any given time.
+3. **Deployments:** Manages the rollout of new versions of an application.
+4. **Services:** Provides a stable network identity for accessing applications.
+5. **Persistent Volumes:** Provides persistent storage for data that needs to be retained across pod restarts.
+
+**Benefits:**
+
+1. **Increased Efficiency:** Automates many tasks, freeing up time and resources.
+2. **Improved Scalability:** Easily scale applications horizontally or vertically.
+3. **High Availability:** Ensures high availability by deploying multiple replicas of an application.
+4. **Simplified Management:** Provides a single platform for managing multiple applications.
+
+**Use Cases:**
+
+1. **Web Applications:** Kubernetes is well-suited for web applications with complex dependencies and traffic patterns.
+2. **Microservices Architecture:** Kubernetes is ideal for microservices architecture, where each service is self-contained and needs to be deployed independently.
+3. **Cloud-Native Applications:** Kubernetes provides a platform-agnostic way to deploy cloud-native applications.
+
+In summary, Kubernetes is an open-source container orchestration system that automates the deployment, scaling, and management of containerized applications. It provides a flexible, scalable, and secure environment for building cloud-native applications.
+```
+
+Meta's Llama 3.2 3B colletion of LLMs parameters is 2.0 GB.
+Let's use a smaller model like tinyllama 
+
+```
+In the Ollama Pod, pull the tinyllama LLM:
+```shell
+kubectl -n dra-tutorial exec ollama -- ollama pull tinyllama:1.1b
+```
+
+Output:
+```shell
+pulling manifest 
+pulling 2af3b81862c6: 100% ▕██████████████████▏ 637 MB                         
+pulling af0ddbdaaa26: 100% ▕██████████████████▏   70 B                         
+pulling c8472cd9daed: 100% ▕██████████████████▏   31 B                         
+pulling fa956ab37b8c: 100% ▕██████████████████▏   98 B                         
+pulling 6331358be52a: 100% ▕██████████████████▏  483 B                         
+verifying sha256 digest 
+writing manifest 
+success 
+```
+
+and run the same query
+```shell
+kubectl -n dra-tutorial exec ollama -- ollama run tinyllama:1.1b "what is kubernetes"
+```
+
+Output:
+```shell
+ Kubernetes is a popular open-source container orchestration system that allows you to manage and deploy containers in a highly available and scalable way. It is designed for automating the deployment, management, and scaling of containerized applications at scale in large-scale enterprise environments. Kubernetes offers several benefits over traditional container management approaches such as:
+
+1. Flexibility: Kubernetes allows you to define your application requirements, and it manages container resources dynamically based on those requirements. This eliminates the need for manual container resource allocation and scaling.
+
+2. Scalability: Kubernetes enables you to automatically scale up or down your applications' containers based on demand. This feature is called Autoscaling and is part of its core functionality.
+
+3. Separation of Concerns: Kubernetes separates the deployment, management, and scaling aspects of containerized applications from their underlying infrastructure components. This helps you to maintain a more reliable and scalable system without the need for additional tools or services.
+
+4. Scalability: You can scale your containers up or down by simply updating the number of replicas for the Pods associated with each container within Kubernetes, which is an on-demand provisioning model. This provides you with flexibility and control over how many containers are running at any given time.
+
+5. Integration: Kubernetes provides a plethora of integrations with other Open Source technologies like Docker Swarm or ECS in AWS, making it easy to integrate with existing infrastructure as well.
+
+Overall, Kubernetes is a powerful container orchestration platform that offers several benefits and features that can help you manage your containers more effectively and efficiently.
+```
+
+### Sharing Device
+Any difference in the response?
+
+Check the environment variables in the Ollama Pod:
+```shell
+kubectl -n dra-tutorial exec ollama -- env
+PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+HOSTNAME=ollama
+SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+OLLAMA_HOST=0.0.0.0
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_NODE_NAME=kind-worker
+DRA_RESOURCE_DRIVER_NAME=gpu.example.com
+GPU_DEVICE_6_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_6=gpu-6
+GPU_DEVICE_6_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_6_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_7_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_7=gpu-7
+GPU_DEVICE_7_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_7_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_0_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_0=gpu-0
+GPU_DEVICE_0_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_0_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_3_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_3=gpu-3
+GPU_DEVICE_3_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_3_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_4_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_4=gpu-4
+GPU_DEVICE_4_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_4_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_5_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_5=gpu-5
+GPU_DEVICE_5_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_5_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_8_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_8=gpu-8
+GPU_DEVICE_8_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_8_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_1_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_1=gpu-1
+GPU_DEVICE_1_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_1_TIMESLICE_INTERVAL=Default
+GPU_DEVICE_2_RESOURCE_CLAIM=8dd46879-44b5-4d07-b546-7aec29a5016b
+GPU_DEVICE_2=gpu-2
+GPU_DEVICE_2_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_2_TIMESLICE_INTERVAL=Default
+HOME=/root
 ```
 ## MIG example
 Multi-instance GPU
