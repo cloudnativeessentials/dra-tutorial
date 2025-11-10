@@ -9,25 +9,27 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
 
-[Module 1 - Introduction to Dynamic Resource Allocation](#module-1-introduction-to-dynamic-resource-allocation) 15 minutes
+[Module 1 - Introduction to Dynamic Resource Allocation](#module-1-introduction-to-dynamic-resource-allocation) 17 minutes
 - [DRA Overview](#dra-overview) 7 minutes
 - [Cluster Setup (kind on RHEL)](#cluster-setup) 10 minutes
 
-[Module 2 - DRA Under the Covers (15 minutes)](#module-2-dra-under-the-covers)
-- [DRA Resource Driver](#dra-resource-driver) 5 minutes
-- [DRA Resources](#dra-resources) 8 minutes
-  - [DRA Driver](#dra-driver-typically-a-daemonset)
-  - [ResourceSlice](#resourceslice)
-  - [DeviceClass](#deviceclass)
+[Module 2 - DRA Under the Covers](#module-2-dra-under-the-covers) 24 minutes
+- [DRA Resource Driver](#dra-resource-driver) 6 minutes
+- [DRA Resources](#dra-resources) 
+  - [DRA Driver](#dra-driver-typically-a-daemonset) 5 minutes
+  - [ResourceSlice](#resourceslice) 3 minutes
+  - [DeviceClass](#deviceclass) 4 minutes
+  - [ResourceClaim](#resourceclaim) 3 minutes
+  - [ResourceClaimTemplate](#resourceclaimtemplate) 3 minutes
 
-Module 3 - DRA Drivers (15 minutes)
-5 minutes - Intel Drivers
-5 minutes - NVIDIA Drivers
-5 minutes - DRANET
+[Module 3 - DRA Drivers](#module-3-dra-drivers) 15 minutes
+- [NVIDIA DRA Driver](#nvidia-dra-driver) 5 minutes
+- [Intel DRA Driver](#intel-dra-driver) 5 minutes
+- [DRANET](#dranet) 5 minutes
 
-Module 4 - Deploying Workloads that use DRA (15 minutes)
-5 minutes - Explore Workload YAML that uses DRA
-5 minutes - Run Workload YAML that uses DRA
+Module 4 - Deploying Workloads that use DRA (17 minutes)
+6 minutes - Explore Workload YAML that uses DRA
+6 minutes - Run Workload YAML that uses DRA
 5 minutes - Confirm DRA uses
 
 Module 4
@@ -425,7 +427,10 @@ spec:
               device.capacity["driver.example.com"].memory == quantity("64Gi")             
 ```
 
-## Module 3 - DRA Drivers
+#### ResourceClaimTemplate
+
+
+## Module 3: DRA Drivers
 
 ### NVIDIA DRA Driver
 The NVIDIA DRA Driver is installed via a helm chart
