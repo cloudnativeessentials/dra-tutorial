@@ -4,7 +4,7 @@ metadata:
   name: example-dra-job
   namespace: dra-tutorial
 spec:
-  completions: 5
+  completions: 6
   parallelism: 2
   template:
     spec:
