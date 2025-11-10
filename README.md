@@ -84,15 +84,20 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
+Go to the workshop platform to obtain a VM:
+![Red Hat Demo Platform](./images/initial-login.png)
+
+With the credentials, log into yoour VM
 Log into your VM
-#####
-<tab><tab>ssh labuser@
+```shell
+ssh labuser@
+```
 
 
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
 Run the install script:
-```shell
+```bash
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
 
