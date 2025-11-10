@@ -69,29 +69,39 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
-Go to the workshop platform to obtain a VM:
-<br><img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="800"/>
+Go to the workshop platform to obtain login instructions to a VM:
+<br><img src="./images/initial-login.png" alt="Red Hat Demo Platform" width="800"/><br>
 
-With the credentials, log into your VM
-Log into your VM
+<br><img src="./images/login-instructions.png" alt="login instructions" width="400"/><br>
+
+
+SSH into your VM:\
+Note: the following is an example, use the hostname provided to you in the above
+
 ```shell
-ssh labuser@
+ssh lab-user@rhel9.m4kkb.sandbox1943.opentlc.com
 ```
+
+Accept to continue to connect if prompted and enter the provided password when prompted
+
+```shell
+The authenticity of host 'rhel9.m4kkb.sandbox1943.opentlc.com (3.22.88.9)' can't be established.
+ED25519 key fingerprint is SHA256:1qrBdHzv0B3ExYHpdKBMcNOQwbpyzKyTB5Y4S3kjlfQ.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'rhel9.m4kkb.sandbox1943.opentlc.com' (ED25519) to the list of known hosts.
+lab-user@rhel9.m4kkb.sandbox1943.opentlc.com's password: 
+```
+
 
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
 Run the install script:
+Note: the install script will take about 3.5 minutes
+
 ``` shell
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
-
-{% capture code %}POST /ts_dataservice/v1/public/session HTTP/1.1
-Host: client.mydomain.com Accept: application/json Content-type: application/json
-{
-"username":"",
-"password":""
-}{% endcapture %}
-{% include code.html code=code lang="javascript"%}
 
 Output:
 
