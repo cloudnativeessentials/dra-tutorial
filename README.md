@@ -99,6 +99,7 @@ Run the install script:
 ``` shell
 curl https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/install-kind.sh | sh
 ```
+
 {% capture code %}POST /ts_dataservice/v1/public/session HTTP/1.1
 Host: client.mydomain.com Accept: application/json Content-type: application/json
 {
