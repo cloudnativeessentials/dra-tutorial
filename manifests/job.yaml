@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: example-dra-job
+  namespace: dra-tutorial
 spec:
   completions: 5
   parallelism: 2
