@@ -764,7 +764,7 @@ kubeletPlugin:
 As you can see, there are many options that can be configured during `helm install`.
 For more information, see the [NVIDIA docs](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator)
 
-Let's look at all the information from the chart:
+Let's look at all the information from the chart (this will be a lot of output):
 
 ```shell
 helm show all nvidia/nvidia-dra-driver-gpu
@@ -1877,10 +1877,10 @@ spec:
 For more information on the NVIDIA DRA driver installation see https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html
 
 ### Intel DRA Driver
-Intel's GPU DRA Driver is also installed via a Helm chart.
-Let's take a look into the Intel GPU driver.
 
 Intel hosts its GPU DRA Driver on [GitHub intel/intel-resource-drivers-for-kubernetes](https://github.com/intel/intel-resource-drivers-for-kubernetes/blob/main/charts/intel-gpu-resource-driver/README.md)
+
+Intel's GPU DRA Driver is also installed via a Helm chart.
 
 Let's look at Intel's GPU DRA Driver through a dry-run simulation of the helm install:
 
