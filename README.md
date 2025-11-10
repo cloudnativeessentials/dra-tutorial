@@ -85,7 +85,8 @@ A cluster admin installs a corresponding DeviceClass that has device configurati
 Since DRA was GA'd in Kubernetes v1.34 released in August of 2025. You will use kind (Kubernetes in Docker) in this lab.
 
 Log into your VM
-```shell
+```
+ssh labuser@
 ```
 
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
