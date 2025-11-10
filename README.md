@@ -27,7 +27,8 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Intel DRA Driver](#intel-dra-driver) 5 minutes
 - [DRANET](#dranet) 5 minutes
 
-[Module 4 - Deploying DRA and Workloads](#module-4-deploying-dra-and-workloads) (17 minutes) 
+[Module 4 - Deploy DRA and Workloads](#module-4-deploying-dra-and-workloads) (17 minutes) 
+- [Deploy a DeviceClass](#deploying-a-deviceclass)
 - 6 minutes - Explore Workload YAML that uses DRA
 6 minutes - Run Workload YAML that uses DRA
 5 minutes - Confirm DRA uses
@@ -2260,9 +2261,9 @@ serviceaccount/dranet created (dry run)
 daemonset.apps/dranet created (dry run)
 ```
 
-# Module 4: Deploying DRA and Workloads
+# Module 4: Deploy DRA and Workloads
 
-## Deploying a DeviceClass
+## Deploy a DeviceClass
 
 Create the `dra-tutorial` namespace:
 ```shell
@@ -2372,8 +2373,8 @@ deviceclass.resource.k8s.io/gpu.example.com created
 ```
 
 
-## Deploying RBAC Permissions for the DRA Driver
-Before we deploy a DRA driver, let's deploy RBAC resources like the ServiceAccount, ClusterRole, ClusterRoleBinding
+## Create RBAC Authorization for the DRA Driver
+Before you deploy a DRA driver, create RBAC authorization for the DRA driver to control ResourceSlices, get Nodes, and get ResourceClaims.
 
 Let's take a look at the ServiceAccount, ClusterRole, ClusterRoleBinding that binds the ClusterRole to the Service Account:
 
@@ -2468,7 +2469,7 @@ Expected output:
 priorityclass.scheduling.k8s.io/dra-driver-high-priority created
 ```
 
-## Deploying the DRA Driver
+## Deploy the DRA Driver
 Before creating the example DRA driver, let's take a look at the DRA driver's manifest
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
