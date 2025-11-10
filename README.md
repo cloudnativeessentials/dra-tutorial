@@ -3552,7 +3552,7 @@ spec:
       requests:
       - name: req-0
         firstAvailable:
-        - name: 80gi 
+        - name: more-than-40gi 
           deviceClassName: gpu.example.com
           allocationMode: ExactCount
           count: 1
