@@ -154,7 +154,9 @@ Client Version: v1.34.1
 Kustomize Version: v5.7.1
 Server Version: v1.34.0
 ```
-DRA graduated to stable in v1.34 on August 27 2025.
+DRA graduated to stable in v1.34 on August 27, 2025.
+The core DRA APIs `resource.k8s.io/v1` graduated to stable.
+In v1.33, they were `resource.k8s.io/v1beta1`.
 
 Check the cluster's nodes:
 ```shell
