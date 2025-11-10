@@ -3562,4 +3562,63 @@ spec:
               expression: |-
                 device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
-This ResourceClaimTemplate requests for one 80Gi device 
+This ResourceClaimTemplate requests for one 80Gi device.
+
+Create the ResourceClaimTemplate:
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaimtemplate.yaml
+```
+
+Output:
+```shell
+resourceclaimtemplate.resource.k8s.io/example-resource-claim-template created
+```
+
+Create multiple Pods that reference the ResourceClaimTemplate:
+
+Use a Deployment to create multiple Pods that refers to the same ResourceClaimTemplate:
+
+```shell
+curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deployment.yaml
+```
+
+Output:
+```shell
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-deployment
+  namespace: dra-tutorial
+  labels:
+    app: ollama-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ollama-deployment
+  template:
+    metadata:
+      labels:
+        app: ollama-deployment
+    spec:
+      containers:
+      - name: ollama-deploy
+        image: alpine/ollama:0.11.10
+        resources:
+          claims:
+          - name: separate-gpu
+      resourceClaimTemplate:
+      - name: seperate-gpu
+        resourceClaimTemplateName: example-resource-claim-template
+```
+
+Create the Deployment:
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deployment.yaml
+```
+
+Output:
+```shell
+```
