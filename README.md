@@ -8,7 +8,6 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
-
 [Module 1 - Introduction to Dynamic Resource Allocation](#module-1-introduction-to-dynamic-resource-allocation) 10 minutes
 - [DRA Overview](#dra-overview) 
 - [Cluster Setup (kind on RHEL)](#cluster-setup)
@@ -180,14 +179,16 @@ A DRA driver
 - centralized controller running in HA (deployment)
 
 Centralized Controller
-- coordinates with Kubernetes scheduler to decide which node a ResourceClaim can be serviced on
-- performs the actual Resource Claim allocation after a node is selected by the scheduler
+- performs the ResourceClaim creation from ResourceClaimTemplates
+- performs the actual ResourceClaim allocation after a node is selected by the scheduler
 - performs deallocation of ResourceClaim once deleted
 
 Node-local kubelet plugin
 - advertizes the node-local state that the centralize controller needs to help make allocation decisions
 - makes node-local operations required to prepare a ResourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
 - pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
+
+- scheduler plugin that detects Pods which references a ResourceClaim or ResourceClaimTemplate and ensures the resource is allocated where the Pod is scheduled to
 
 ### DRA Resources
 
@@ -2435,9 +2436,9 @@ spec:
     resourceClaimName: cloud-network-dra-net
 ```
 
-# Module 4: Deploy a DRA Driver and Workloads
+## Module 4: Deploy a DRA Driver and Workloads
 
-## Deploy a DeviceClass
+### Deploy a DeviceClass
 
 Create the `dra-tutorial` namespace:
 ```shell
@@ -2545,7 +2546,7 @@ Output:
 deviceclass.resource.k8s.io/gpu.example.com created
 ```
 
-## Create RBAC Authorization for the DRA Driver
+### Create RBAC Authorization for the DRA Driver
 
 Before you deploy a DRA driver, create RBAC authorization for the DRA driver to control ResourceSlices, get Nodes, and get ResourceClaims.
 
@@ -2610,7 +2611,7 @@ clusterrole.rbac.authorization.k8s.io/dra-example-driver-role created
 clusterrolebinding.rbac.authorization.k8s.io/dra-example-driver-role-binding created
 ```
 
-## PriorityClass
+### PriorityClass
 
 Create the PriorityClass to prevent preemption of the DRA driver:
 
@@ -2642,7 +2643,7 @@ Output:
 priorityclass.scheduling.k8s.io/dra-driver-high-priority created
 ```
 
-## Deploy the DRA Driver
+### Deploy the DRA Driver
 
 Before creating the example DRA driver, let's take a look at the DRA driver's manifest
 
@@ -2756,7 +2757,7 @@ NAME                                         READY   STATUS    RESTARTS   AGE
 pod/dra-example-driver-kubeletplugin-q7whd   1/1     Running   0          2m17s
 ```
 
-## ResourceSlice
+### ResourceSlice
 
 A ResourceSlice would be created. Let's take a look into the ResourceSlice
 
@@ -2924,7 +2925,7 @@ Spec:
 Events:                    <none>
 ```
 
-## ResourceClaim
+### ResourceClaim
 
 Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest:
 
@@ -3012,7 +3013,7 @@ Status:
 Events:  <none>
 ```
 
-#### Ollama Pod Workloads
+### Ollama Pod Workloads
 
 Ollama (Omni-Layer Learning Language Acquisition Model) is a tool that runs LLMs locally.
 Ollama.com hosts many LLM models.
@@ -3379,7 +3380,7 @@ Overall, Kubernetes is a powerful container orchestration platform that offers s
 
 How do the responses differ?
 
-## Sharing a ResoureClaim
+### Sharing a ResoureClaim
 
 Let's add another Pod that references the same ResourceClaim.
 
@@ -3511,7 +3512,7 @@ HOME=/root
 
 Both Pods are sharing GPU-7
 
-## ResourceClaimTemplate
+### ResourceClaimTemplate
 
 We can use a ResourceClaimTemplate to dynamically create ResourceClaims per-Pod.
 In this case, the ResourceClaims are not shareable.
@@ -3858,325 +3859,9 @@ The Jobs will complete to run until 4 Job Pods complete.
 
 ## Additional DRA examples
 
-### DRA Enables Topology Aware CPU Scheduling
+### DRA Driver for CPU Resources
 
 Not all CPUs are created equal, some have higher performance, some have better cache.
 With a DRA driver, we can use a DRA driver to scans the Node through the Node Resource Interface and publish a ResourceSlice with each CPU represented as a device along with attributes like core ID, coreType, socktID, numaNode.
 
-For HPC workloads, HPC workloads expect isolated CPUs.
-
-```shell
-curl -w "\n" https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/install.yaml
-```
-
-Output:
-```
-# Copyright 2025 The Kubernetes Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: dracpu
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - nodes
-    verbs:
-      - get
-  - apiGroups:
-      - "resource.k8s.io"
-    resources:
-      - resourceslices
-    verbs:
-      - list
-      - watch
-      - create
-      - update
-      - delete
-  - apiGroups:
-      - "resource.k8s.io"
-    resources:
-      - resourceclaims
-      - deviceclasses
-    verbs:
-      - get
-  - apiGroups:
-      - "resource.k8s.io"
-    resources:
-      - resourceclaims/status
-    verbs:
-      - patch
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-      - list
-      - watch
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: dracpu
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: dracpu
-subjects:
-- kind: ServiceAccount
-  name: dracpu
-  namespace: kube-system
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: dracpu
-  namespace: kube-system
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: dracpu
-  namespace: kube-system
-  labels:
-    tier: node
-    app: dracpu
-    k8s-app: dracpu
-spec:
-  selector:
-    matchLabels:
-      app: dracpu
-  template:
-    metadata:
-      labels:
-        tier: node
-        app: dracpu
-        k8s-app: dracpu
-    spec:
-      hostNetwork: true
-      tolerations:
-      - operator: Exists
-        effect: NoSchedule
-      serviceAccountName: dracpu
-      hostPID: true
-      initContainers:
-      - name: enable-nri-and-cdi
-        image: busybox:stable
-        volumeMounts:
-        - mountPath: /etc
-          name: etc
-        securityContext:
-          privileged: true
-        command:
-        - /bin/sh
-        - -c
-        - |
-          set -o errexit
-          set -o pipefail
-          set -o nounset
-          set -x
-          CONFIG_CHANGED=false
-          CONTAINERD_CONFIG_PATH="/etc/containerd/config.toml"
-          # --- Enable CDI ---
-          if grep -q '^\s*enable_cdi\s*=\s*true' "$CONTAINERD_CONFIG_PATH"; then
-            echo "containerd config already has CDI enabled; taking no action"
-          else
-            echo "containerd config does not have CDI enabled, thus enabling it";
-            sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\]/a \  enable_cdi = true' "$CONTAINERD_CONFIG_PATH"
-            CONFIG_CHANGED=true
-          fi
-          # --- CDI Spec Dirs Configuration ---
-          if grep -q '^\s*cdi_spec_dirs\s*=' "$CONTAINERD_CONFIG_PATH"; then
-            echo "containerd config already configures cdi_spec_dirs; taking no action"
-          else
-            echo "containerd config does not configure cdi_spec_dirs, thus setting it";
-            sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\]/a \  cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]' "$CONTAINERD_CONFIG_PATH"
-            CONFIG_CHANGED=true
-          fi
-          # --- Enable NRI ---
-          if grep -q "io.containerd.nri.v1.nri" "$CONTAINERD_CONFIG_PATH"
-          then
-             echo "containerd config contains NRI reference already; taking no action"
-          else
-             echo "containerd config does not mention NRI, thus enabling it";
-             printf '%s\n' "[plugins.\"io.containerd.nri.v1.nri\"]" "  disable = false" "  disable_connections = false" "  plugin_config_path = \"/etc/nri/conf.d\"" "  plugin_path = \"/opt/nri/plugins\"" "  plugin_registration_timeout = \"5s\"" "  plugin_request_timeout = \"5s\"" "  socket_path = \"/var/run/nri/nri.sock\"" >> "$CONTAINERD_CONFIG_PATH"
-             CONFIG_CHANGED=true
-          fi
-          if [ "$CONFIG_CHANGED" = true ]; then
-            echo "restarting containerd"
-            nsenter -t 1 -m -u -i -n -p -- systemctl restart containerd
-          fi
-      containers:
-      - name: dracpu
-        args:
-        - /dracpu
-        - --v=4
-        image: us-central1-docker.pkg.dev/k8s-staging-images/dra-driver-cpu/dra-driver-cpu:latest
-        imagePullPolicy: Always
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
-        securityContext:
-          capabilities:
-            add: ["NET_ADMIN", "SYS_ADMIN"]
-        volumeMounts:
-        - name: device-plugin
-          mountPath: /var/lib/kubelet/plugins
-        - name: plugin-registry
-          mountPath: /var/lib/kubelet/plugins_registry
-        - name: nri-plugin
-          mountPath: /var/run/nri
-        - name: cdi-dir
-          mountPath: /var/run/cdi
-      volumes:
-      - name: device-plugin
-        hostPath:
-          path: /var/lib/kubelet/plugins
-      - name: plugin-registry
-        hostPath:
-          path: /var/lib/kubelet/plugins_registry
-      - name: nri-plugin
-        hostPath:
-          path: /var/run/nri
-      - name: netns
-        hostPath:
-          path: /var/run/netns
-      - name: infiniband
-        hostPath:
-          path: /dev/infiniband
-      - name: etc
-        hostPath:
-          path: /etc
-      - name: cdi-dir
-        hostPath:
-          path: /var/run/cdi
-          type: DirectoryOrCreate
----
-apiVersion: resource.k8s.io/v1
-kind: DeviceClass
-metadata:
-  name: dra.cpu
-spec:
-  selectors:
-    - cel:
-        expression: device.driver == "dra.cpu"
-```
-
-Create the pre-reqs:
-```shell
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/install.yaml
-```
-
-Output:
-```shell
-clusterrole.rbac.authorization.k8s.io/dracpu created
-clusterrolebinding.rbac.authorization.k8s.io/dracpu created
-serviceaccount/dracpu created
-daemonset.apps/dracpu created
-deviceclass.resource.k8s.io/dra.cpu created
-```
-
-Create the ResourceClaim:
-```shell
-curl -w "\n" https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_cpu_resource_claims.yaml
-```
-
-Output:
-```shell
-apiVersion: resource.k8s.io/v1
-kind: ResourceClaim
-metadata:
-  name: cpu-request-4-cpus
-spec:
-  devices:
-    requests:
-    - name: req-dummy
-      exactly:
-        deviceClassName: dra.cpu
-        count: 4
----
-apiVersion: resource.k8s.io/v1
-kind:  ResourceClaim
-metadata:
-  name: cpu-request-6-cpus
-spec:
-  devices:
-    requests:
-    - name: req-dummy-2
-      exactly:
-        deviceClassName: dra.cpu
-        count: 6
-```
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_cpu_resource_claims.yaml
-```
-
-Output:
-```shell
-resourceclaim.resource.k8s.io/cpu-request-4-cpus created
-resourceclaim.resource.k8s.io/cpu-request-6-cpus created
-```
-
-Pod
-```shell
-curl -w "\n" https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_pod_with_cpu_resource_claim.yaml
-```
-
-Output:
-```shell
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-app-with-dra-cpu
-spec:
-  containers:
-    - name: container1
-      image: "registry.k8s.io/pause:3.9"
-      resources:
-        requests:
-          cpu: "4"
-        limits:
-          cpu: "4"
-        claims:
-          - name: "container1-claim"
-    - name: container2
-      image: "registry.k8s.io/pause:3.9"
-      resources:
-        requests:
-          cpu: "6"
-        limits:
-          cpu: "6"
-        claims:
-          - name: "container2-claim"
-  resourceClaims:
-    - name: "container1-claim"
-      resourceClaimName: cpu-request-4-cpus
-    - name: "container2-claim"
-      resourceClaimName: cpu-request-6-cpus
-```
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_pod_with_cpu_resource_claim.yaml
-```
-
-Output:
-```
-pod/my-app-with-dra-cpu created
-```
+Learn more on the [GitHub repo for DRA Driver for CPU Resources](https://github.com/kubernetes-sigs/dra-driver-cpu/)
