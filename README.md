@@ -9,25 +9,25 @@ This tutorial introduces DRA, reviews the “behind-the-scenes” of DRA in the 
 In this tutorial we will install a Kubernetes cluster, review the DRA resources and how they work, install a sample DRA driver, run workloads that use the DRA driver.
 
 
-[Module 1 - Introduction to Dynamic Resource Allocation](#module-1-introduction-to-dynamic-resource-allocation) 17 minutes
-- [DRA Overview](#dra-overview) 7 minutes
-- [Cluster Setup (kind on RHEL)](#cluster-setup) 10 minutes
+[Module 1 - Introduction to Dynamic Resource Allocation](#module-1-introduction-to-dynamic-resource-allocation) 10 minutes
+- [DRA Overview](#dra-overview) 
+- [Cluster Setup (kind on RHEL)](#cluster-setup)
 
-[Module 2 - DRA Under the Covers](#module-2-dra-under-the-covers) 24 minutes
-- [DRA Driver](#dra-driver) 6 minutes
+[Module 2 - DRA Under the Covers](#module-2-dra-under-the-covers) 15 minutes
+- [DRA Driver](#dra-driver) 
 - [DRA Resources](#dra-resources) 
-  - [DRA Driver](#dra-driver-1) 5 minutes
-  - [ResourceSlice](#resourceslice) 3 minutes
-  - [DeviceClass](#deviceclass) 4 minutes
-  - [ResourceClaim](#resourceclaim) 3 minutes
-  - [ResourceClaimTemplate](#resourceclaimtemplate) 3 minutes
+  - [DRA Driver](#dra-driver-1) 
+  - [ResourceSlice](#resourceslice)
+  - [DeviceClass](#deviceclass)
+  - [ResourceClaim](#resourceclaim)
+  - [ResourceClaimTemplate](#resourceclaimtemplate)
 
 [Module 3 - A Look into DRA Drivers](#module-3-a-look-into-dra-drivers) 15 minutes
-- [NVIDIA DRA Driver](#nvidia-dra-driver) 5 minutes
-- [Intel DRA Driver](#intel-dra-driver) 5 minutes
-- [DRANET](#dranet) 5 minutes
+- [NVIDIA DRA Driver](#nvidia-dra-driver)
+- [Intel DRA Driver](#intel-dra-driver)
+- [DRANET](#dranet)
 
-[Module 4 - Deploy a DRA Driver and Workloads](#module-4-deploy-a-dra-driver-and-workloads (17 minutes) 
+[Module 4 - Deploy a DRA Driver and Workloads](#module-4-deploy-a-dra-driver-and-workloads) (25 minutes) 
 - [Deploy a DeviceClass](#deploy-a-deviceclass)
 - [Create RBAC Authorization for the DRA Driver](#create-rbac-authorization-for-the-dra-driver)
 - [PriorityClass](#priorityclass)
@@ -35,20 +35,19 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [ResourceSlice](#resourceslice-1)
 - [Ollama Pod Workloads](#ollama-pod-workloads)
 - [Sharing a ResoureClaim](#sharing-a-resoureclaim)
+- [Job with ResourceClaimTemplate](#job-with-resourceclaimtemplate)
 6 minutes - Run Workload YAML that uses DRA
 5 minutes - Confirm DRA uses
 
+
 ## Module 1: Introduction to Dynamic Resource Allocation
+
 Kubernetes v1.34 was released in August and the core components of Dynamic Resource Allocation were promoted to stable / GA.
 Workloads need more than CPU and memory but also need specialized hardware.
-DRA is a new API for Pods to request and access specialized hardware like accelerators such as GPUs, field programmable gate arrays (FPGAs), Tensor Processing Unit (TPU) or network-attached devices.
+DRA is a new API for Pods to request and access specialized hardware like accelerators such as GPUs, fabric-attached GPUs, Tensor Processing Unit (TPU) or network-attached devices.
 Support for hardware are provided by vendors via DRA drivers.
 
-The previous way of accessing specialized hardware was with device plugins and had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric.
-
-Node plugins are good for requesting single, linear quantity of resources.
-
-Later, you will take a look at a few vendor's DRA drivers: NVIDIA and Intel
+The previous way of accessing specialized hardware was with device plugins which had limitations such as the inability to share allocated devices among multiple Pods and the device had to be attached to a node (node-local) not across the network fabric. Device plugins are good for requesting single, linear quantity of resources. The evolving nature of resources and extension of Kubernetes workloads to use specialized resources required a more flexible way to access and allocate those resources.
 
 Compared to device plugins, DRA offers the following benefits to use specialized devices by Kubernetes workloads:
 - device filtering with Common Expression Language (CEL) for fine-grained filtering
@@ -56,10 +55,8 @@ Compared to device plugins, DRA offers the following benefits to use specialized
 - centralized device categorization
 - flexible configuration like dynamic GPU partitioning
 
-
 ### DRA Overview
-Dynamic Resource Allocation 
-Like with Device Plugin, you need a driver.
+
 The DRA driver (installed locally) has a component called the kubelet-plugin (typically a DaemonSet) that talks to the node's kubelet about the device and prepares the device to be used.
 
 The DRA driver publishes the available device in the form of a ResourceSlice object which is tied to the specific node where the DRA driver is installed -- so when a node goes down, the corresponding ResourceSlices will also be gone.
@@ -98,7 +95,6 @@ Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 Warning: Permanently added 'rhel9.m4kkb.sandbox1943.opentlc.com' (ED25519) to the list of known hosts.
 lab-user@rhel9.m4kkb.sandbox1943.opentlc.com's password: 
 ```
-
 
 There is a script that will install kind cluster with 1 control plane and 1 worker node cluster.
 
@@ -145,6 +141,7 @@ kind cluster is ready
 ```
 
 Test the cluster:
+
 ```shell
 kubectl version
 ```
@@ -157,6 +154,7 @@ Server Version: v1.34.0
 ```
 
 Check the cluster's nodes:
+
 ```shell
 kubectl get nodes
 ```
@@ -178,7 +176,7 @@ In v1.34, the core DRA APIs `resource.k8s.io/v1` graduated to stable from `resou
 
 A DRA driver 
 2 components that coordinate with each other
-- node-local kubelet plugin (DaemonSet) on nodes with the advertised device
+- node-local kubelet plugin (DaemonSet) on nodes with the advertised device(s)
 - centralized controller running in HA (deployment)
 
 Centralized Controller
@@ -187,30 +185,9 @@ Centralized Controller
 - performs deallocation of ResourceClaim once deleted
 
 Node-local kubelet plugin
-- advertize the node-local state that the centralize controller needs to help make allocation decisions
-- makes node-local operations required to prepare a ReourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
+- advertizes the node-local state that the centralize controller needs to help make allocation decisions
+- makes node-local operations required to prepare a ResourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
 - pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
-
-2 Modes to communicate between Centralized Controller and kubelet-plugin
-- Single, all-purpose, per-node CRD
-  - kubelet plugin advertises available resources
-  - controller tracks resources allocated
-  - kubelet-plugin tracks resources it prepared
-- Split-purpose Communication
-  - kubelet plugin advertises available resources via CRD that the controller can access
-  - controller tracks allocated resources through ResourceHandle in ResourceClaim
-  - kubelet plugin tracks resources in a checkpoint file on the local filesystem
-
-Scheduling: in general, the Kubernetes scheduler and DRA driver controller communicate through the Kubernetes API server by updating a `PodSchedulingContext` object which leads to the allocation of the ResourceClaim and Pod to a Node with the available resource.
-
-Modes of Allocating Resources with DRA (specified in the ResourceClaim)
-- Immediate
-  - More restrictive, resource availability is not considered
-  - Allocate resources immediately upon the creation of ResourceClaim
-  - Pods are restricted to those nodes with ResourceClaim (other resource availability is not considered in scheduling)
-- Delayed (wait for first consumer)
-  - Resource availability is considered in part of overall Pod scheduling
-  - Delays the allocation of the ResourceClaim until the first Pod that references it is scheduled
 
 ### DRA Resources
 
@@ -3634,7 +3611,7 @@ metadata:
   name: dra-job
   namespace: dra-tutorial
 spec:
-  completions: 6
+  completions: 4
   parallelism: 2
   template:
     spec:
@@ -3642,7 +3619,7 @@ spec:
       containers:
       - name: busybox
         image: busybox:1.37.0
-        command: ["env", "sleep", "600"]
+        command: ["/bin/sh","-c","env && sleep 600"]
         resources:
           claims:
           - name: my-gpu-claim
@@ -3668,46 +3645,49 @@ kubectl -n dra-tutorial get jobs,pods,resourceclaims
 
 Output:
 ```shell
-NAME                                         READY   STATUS              RESTARTS   AGE
-pod/dra-example-driver-kubeletplugin-8tbxz   1/1     Running             0          144m
-pod/ollama                                   1/1     Running             0          121m
-pod/ollama-deployment-6d84cb6cd4-jfn2t       0/1     ContainerCreating   0          66s
-pod/ollama-deployment-6d84cb6cd4-sztwv       0/1     ContainerCreating   0          66s
-pod/ollama2                                  1/1     Running             0          30m
+NAME                STATUS    COMPLETIONS   DURATION   AGE
+job.batch/dra-job   Running   0/4           90s        90s
 
-NAME                                                                                  STATE                AGE
-resourceclaim.resource.k8s.io/example-resource-claim                                  allocated,reserved   137m
-resourceclaim.resource.k8s.io/ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-ctgtc   allocated,reserved   66s
-resourceclaim.resource.k8s.io/ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qfdj4   allocated,reserved   66s
+NAME                                         READY   STATUS    RESTARTS   AGE
+pod/dra-example-driver-kubeletplugin-nzz5z   1/1     Running   0          27m
+pod/dra-job-64mw7                            1/1     Running   0          90s
+pod/dra-job-8vh8x                            1/1     Running   0          90s
+pod/ollama                                   1/1     Running   0          27m
+pod/ollama2                                  1/1     Running   0          12s
+
+NAME                                                             STATE                AGE
+resourceclaim.resource.k8s.io/dra-job-64mw7-my-gpu-claim-9p7df   allocated,reserved   90s
+resourceclaim.resource.k8s.io/dra-job-8vh8x-my-gpu-claim-ttmhm   allocated,reserved   90s
+resourceclaim.resource.k8s.io/example-resource-claim             allocated,reserved   27m
 ```
 
 Describe each of the new ResourceClaims:
 ```shell
-kubectl describe $(kubectl get resourceclaim -o name -n dra-tutorial | grep dra-job)
+kubectl describe $(kubectl get resourceclaim -o name -n dra-tutorial | grep "dra-job") -n dra-tutorial
 ```
 
 Output:
 ```shell
-Name:         ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-ctgtc
+Name:         dra-job-64mw7-my-gpu-claim-9p7df
 Namespace:    dra-tutorial
 Labels:       <none>
 Annotations:  resource.kubernetes.io/pod-claim-name: my-gpu-claim
 API Version:  resource.k8s.io/v1
 Kind:         ResourceClaim
 Metadata:
-  Creation Timestamp:  2025-11-10T20:55:02Z
+  Creation Timestamp:  2025-11-11T00:58:46Z
   Finalizers:
     resource.kubernetes.io/delete-protection
-  Generate Name:  ollama-deployment-6d84cb6cd4-jfn2t-my-gpu-claim-
+  Generate Name:  dra-job-64mw7-my-gpu-claim-
   Owner References:
     API Version:           v1
     Block Owner Deletion:  true
     Controller:            true
     Kind:                  Pod
-    Name:                  ollama-deployment-6d84cb6cd4-jfn2t
-    UID:                   995ce42c-5cb9-40a4-9904-453dfc21071b
-  Resource Version:        29323
-  UID:                     96bba17d-19c1-4597-9026-76c839585086
+    Name:                  dra-job-64mw7
+    UID:                   592011d0-4b37-48f4-be02-fb9d64d0ad81
+  Resource Version:        27796
+  UID:                     abe20b78-e6ca-4cec-8828-753fe16f1226
 Spec:
   Devices:
     Requests:
@@ -3715,7 +3695,61 @@ Spec:
         Allocation Mode:    ExactCount
         Count:              1
         Device Class Name:  gpu.example.com
-        Name:               80gi
+        Name:               80gi-gpu
+        Selectors:
+          Cel:
+            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
+      Name:              req-0
+Status:
+  Allocation:
+    Devices:
+      Results:
+        Device:   gpu-1
+        Driver:   gpu.example.com
+        Pool:     kind-worker
+        Request:  req-0/80gi-gpu
+    Node Selector:
+      Node Selector Terms:
+        Match Fields:
+          Key:       metadata.name
+          Operator:  In
+          Values:
+            kind-worker
+  Reserved For:
+    Name:      dra-job-64mw7
+    Resource:  pods
+    UID:       592011d0-4b37-48f4-be02-fb9d64d0ad81
+Events:        <none>
+
+
+Name:         dra-job-8vh8x-my-gpu-claim-ttmhm
+Namespace:    dra-tutorial
+Labels:       <none>
+Annotations:  resource.kubernetes.io/pod-claim-name: my-gpu-claim
+API Version:  resource.k8s.io/v1
+Kind:         ResourceClaim
+Metadata:
+  Creation Timestamp:  2025-11-11T00:58:46Z
+  Finalizers:
+    resource.kubernetes.io/delete-protection
+  Generate Name:  dra-job-8vh8x-my-gpu-claim-
+  Owner References:
+    API Version:           v1
+    Block Owner Deletion:  true
+    Controller:            true
+    Kind:                  Pod
+    Name:                  dra-job-8vh8x
+    UID:                   0f914d86-8360-4efc-ada3-f0fc81dab095
+  Resource Version:        27804
+  UID:                     9d83255c-724d-40ba-9412-1cc6e6b28f88
+Spec:
+  Devices:
+    Requests:
+      First Available:
+        Allocation Mode:    ExactCount
+        Count:              1
+        Device Class Name:  gpu.example.com
+        Name:               80gi-gpu
         Selectors:
           Cel:
             Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
@@ -3727,7 +3761,7 @@ Status:
         Device:   gpu-2
         Driver:   gpu.example.com
         Pool:     kind-worker
-        Request:  req-0/80gi
+        Request:  req-0/80gi-gpu
     Node Selector:
       Node Selector Terms:
         Match Fields:
@@ -3736,71 +3770,413 @@ Status:
           Values:
             kind-worker
   Reserved For:
-    Name:      ollama-deployment-6d84cb6cd4-jfn2t
+    Name:      dra-job-8vh8x
     Resource:  pods
-    UID:       995ce42c-5cb9-40a4-9904-453dfc21071b
+    UID:       0f914d86-8360-4efc-ada3-f0fc81dab095
 Events:        <none>
 ```
 
-Describe the other one:
+Check how the DRA driver handled the device allocation:
 
 ```shell
-kubectl describe resourceclaim ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qfdj4 -n dra-tutorial
+kubectl logs -l app.kubernetes.io/name=dra-example-driver -n dra-tutorial
 ```
 
-```shell
-Name:         ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-qfdj4
-Namespace:    dra-tutorial
-Labels:       <none>
-Annotations:  resource.kubernetes.io/pod-claim-name: my-gpu-claim
-API Version:  resource.k8s.io/v1
-Kind:         ResourceClaim
-Metadata:
-  Creation Timestamp:  2025-11-10T20:55:02Z
-  Finalizers:
-    resource.kubernetes.io/delete-protection
-  Generate Name:  ollama-deployment-6d84cb6cd4-sztwv-my-gpu-claim-
-  Owner References:
-    API Version:           v1
-    Block Owner Deletion:  true
-    Controller:            true
-    Kind:                  Pod
-    Name:                  ollama-deployment-6d84cb6cd4-sztwv
-    UID:                   d0ddab1a-cee5-467e-9237-f06363e1d0de
-  Resource Version:        29324
-  UID:                     0cd309df-0b5f-4639-b6f3-1312ba4a0c0f
-Spec:
-  Devices:
-    Requests:
-      First Available:
-        Allocation Mode:    ExactCount
-        Count:              1
-        Device Class Name:  gpu.example.com
-        Name:               80gi
-        Selectors:
-          Cel:
-            Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
-      Name:              req-0
-Status:
-  Allocation:
-    Devices:
-      Results:
-        Device:   gpu-3
-        Driver:   gpu.example.com
-        Pool:     kind-worker
-        Request:  req-0/80gi
-    Node Selector:
-      Node Selector Terms:
-        Match Fields:
-          Key:       metadata.name
-          Operator:  In
-          Values:
-            kind-worker
-  Reserved For:
-    Name:      ollama-deployment-6d84cb6cd4-sztwv
-    Resource:  pods
-    UID:       d0ddab1a-cee5-467e-9237-f06363e1d0de
-Events:        <none>
-```
+Describe the DeviceClass
 
 In this example, the ResourceClaims from the ResourceClaimTemplate used different GPUs.
+
+We can confirm with the environment variables from the Job Podss:
+
+```shell
+kubectl get pods -l job-name=dra-job -n dra-tutorial -o name
+```
+
+Output:
+```shell
+pod/dra-job-64mw7
+pod/dra-job-8vh8x
+```
+
+Exec into each Job Pod:
+
+```shell
+kubectl -n dra-tutorial exec pod/dra-job-64mw7 -- env
+```
+
+Output:
+```shell
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOSTNAME=dra-job-64mw7
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_NODE_NAME=kind-worker
+DRA_RESOURCE_DRIVER_NAME=gpu.example.com
+GPU_DEVICE_1_RESOURCE_CLAIM=abe20b78-e6ca-4cec-8828-753fe16f1226
+GPU_DEVICE_1=gpu-1
+GPU_DEVICE_1_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_1_TIMESLICE_INTERVAL=Default
+HOME=/root
+```
+
+Exec into the other Job Pod:
+
+```shell
+kubectl -n dra-tutorial exec pod/dra-job-8vh8x -- env
+```
+
+Output:
+```shell
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOSTNAME=dra-job-8vh8x
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+KUBERNETES_SERVICE_HOST=10.96.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_PORT=tcp://10.96.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_NODE_NAME=kind-worker
+DRA_RESOURCE_DRIVER_NAME=gpu.example.com
+GPU_DEVICE_2_RESOURCE_CLAIM=9d83255c-724d-40ba-9412-1cc6e6b28f88
+GPU_DEVICE_2=gpu-2
+GPU_DEVICE_2_SHARING_STRATEGY=TimeSlicing
+GPU_DEVICE_2_TIMESLICE_INTERVAL=Default
+HOME=/root
+```
+
+We can see that one Job Pod is allocated GPU-1 and the second Job Pod is allocated GPU-2 in this example.
+
+The Jobs will complete to run until 4 Job Pods complete.
+
+## Additional DRA examples
+
+### DRA Enables Topology Aware CPU Scheduling
+
+Not all CPUs are created equal, some have higher performance, some have better cache.
+With a DRA driver, we can use a DRA driver to scans the Node through the Node Resource Interface and publish a ResourceSlice with each CPU represented as a device along with attributes like core ID, coreType, socktID, numaNode.
+
+For HPC workloads, HPC workloads expect isolated CPUs.
+
+```shell
+curl -w "\n" https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/install.yaml
+```
+
+Output:
+```
+# Copyright 2025 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dracpu
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+  - apiGroups:
+      - "resource.k8s.io"
+    resources:
+      - resourceslices
+    verbs:
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - "resource.k8s.io"
+    resources:
+      - resourceclaims
+      - deviceclasses
+    verbs:
+      - get
+  - apiGroups:
+      - "resource.k8s.io"
+    resources:
+      - resourceclaims/status
+    verbs:
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dracpu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dracpu
+subjects:
+- kind: ServiceAccount
+  name: dracpu
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dracpu
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dracpu
+  namespace: kube-system
+  labels:
+    tier: node
+    app: dracpu
+    k8s-app: dracpu
+spec:
+  selector:
+    matchLabels:
+      app: dracpu
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: dracpu
+        k8s-app: dracpu
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      serviceAccountName: dracpu
+      hostPID: true
+      initContainers:
+      - name: enable-nri-and-cdi
+        image: busybox:stable
+        volumeMounts:
+        - mountPath: /etc
+          name: etc
+        securityContext:
+          privileged: true
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -o errexit
+          set -o pipefail
+          set -o nounset
+          set -x
+          CONFIG_CHANGED=false
+          CONTAINERD_CONFIG_PATH="/etc/containerd/config.toml"
+          # --- Enable CDI ---
+          if grep -q '^\s*enable_cdi\s*=\s*true' "$CONTAINERD_CONFIG_PATH"; then
+            echo "containerd config already has CDI enabled; taking no action"
+          else
+            echo "containerd config does not have CDI enabled, thus enabling it";
+            sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\]/a \  enable_cdi = true' "$CONTAINERD_CONFIG_PATH"
+            CONFIG_CHANGED=true
+          fi
+          # --- CDI Spec Dirs Configuration ---
+          if grep -q '^\s*cdi_spec_dirs\s*=' "$CONTAINERD_CONFIG_PATH"; then
+            echo "containerd config already configures cdi_spec_dirs; taking no action"
+          else
+            echo "containerd config does not configure cdi_spec_dirs, thus setting it";
+            sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\]/a \  cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]' "$CONTAINERD_CONFIG_PATH"
+            CONFIG_CHANGED=true
+          fi
+          # --- Enable NRI ---
+          if grep -q "io.containerd.nri.v1.nri" "$CONTAINERD_CONFIG_PATH"
+          then
+             echo "containerd config contains NRI reference already; taking no action"
+          else
+             echo "containerd config does not mention NRI, thus enabling it";
+             printf '%s\n' "[plugins.\"io.containerd.nri.v1.nri\"]" "  disable = false" "  disable_connections = false" "  plugin_config_path = \"/etc/nri/conf.d\"" "  plugin_path = \"/opt/nri/plugins\"" "  plugin_registration_timeout = \"5s\"" "  plugin_request_timeout = \"5s\"" "  socket_path = \"/var/run/nri/nri.sock\"" >> "$CONTAINERD_CONFIG_PATH"
+             CONFIG_CHANGED=true
+          fi
+          if [ "$CONFIG_CHANGED" = true ]; then
+            echo "restarting containerd"
+            nsenter -t 1 -m -u -i -n -p -- systemctl restart containerd
+          fi
+      containers:
+      - name: dracpu
+        args:
+        - /dracpu
+        - --v=4
+        image: us-central1-docker.pkg.dev/k8s-staging-images/dra-driver-cpu/dra-driver-cpu:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN", "SYS_ADMIN"]
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/plugins
+        - name: plugin-registry
+          mountPath: /var/lib/kubelet/plugins_registry
+        - name: nri-plugin
+          mountPath: /var/run/nri
+        - name: cdi-dir
+          mountPath: /var/run/cdi
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/plugins
+      - name: plugin-registry
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+      - name: nri-plugin
+        hostPath:
+          path: /var/run/nri
+      - name: netns
+        hostPath:
+          path: /var/run/netns
+      - name: infiniband
+        hostPath:
+          path: /dev/infiniband
+      - name: etc
+        hostPath:
+          path: /etc
+      - name: cdi-dir
+        hostPath:
+          path: /var/run/cdi
+          type: DirectoryOrCreate
+---
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: dra.cpu
+spec:
+  selectors:
+    - cel:
+        expression: device.driver == "dra.cpu"
+```
+
+Create the pre-reqs:
+```shell
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/install.yaml
+```
+
+Output:
+```shell
+clusterrole.rbac.authorization.k8s.io/dracpu created
+clusterrolebinding.rbac.authorization.k8s.io/dracpu created
+serviceaccount/dracpu created
+daemonset.apps/dracpu created
+deviceclass.resource.k8s.io/dra.cpu created
+```
+
+Create the ResourceClaim:
+```shell
+curl -w "\n" https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_cpu_resource_claims.yaml
+```
+
+Output:
+```shell
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: cpu-request-4-cpus
+spec:
+  devices:
+    requests:
+    - name: req-dummy
+      exactly:
+        deviceClassName: dra.cpu
+        count: 4
+---
+apiVersion: resource.k8s.io/v1
+kind:  ResourceClaim
+metadata:
+  name: cpu-request-6-cpus
+spec:
+  devices:
+    requests:
+    - name: req-dummy-2
+      exactly:
+        deviceClassName: dra.cpu
+        count: 6
+```
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_cpu_resource_claims.yaml
+```
+
+Output:
+```shell
+resourceclaim.resource.k8s.io/cpu-request-4-cpus created
+resourceclaim.resource.k8s.io/cpu-request-6-cpus created
+```
+
+Pod
+```shell
+curl -w "\n" https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_pod_with_cpu_resource_claim.yaml
+```
+
+Output:
+```shell
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app-with-dra-cpu
+spec:
+  containers:
+    - name: container1
+      image: "registry.k8s.io/pause:3.9"
+      resources:
+        requests:
+          cpu: "4"
+        limits:
+          cpu: "4"
+        claims:
+          - name: "container1-claim"
+    - name: container2
+      image: "registry.k8s.io/pause:3.9"
+      resources:
+        requests:
+          cpu: "6"
+        limits:
+          cpu: "6"
+        claims:
+          - name: "container2-claim"
+  resourceClaims:
+    - name: "container1-claim"
+      resourceClaimName: cpu-request-4-cpus
+    - name: "container2-claim"
+      resourceClaimName: cpu-request-6-cpus
+```
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/dra-driver-cpu/refs/heads/main/hack/examples/sample_pod_with_cpu_resource_claim.yaml
+```
+
+Output:
+```
+pod/my-app-with-dra-cpu created
+```
