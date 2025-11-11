@@ -31,7 +31,10 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Deploy a DeviceClass](#deploy-a-deviceclass)
 - [Create RBAC Authorization for the DRA Driver](#create-rbac-authorization-for-the-dra-driver)
 - [PriorityClass](#priorityclass)
-6 minutes - Explore Workload YAML that uses DRA
+- [Deploy the DRA Driver](#deploy-the-dra-driver)
+- [ResourceSlice](#resourceslice-1)
+- [Ollama Pod Workloads](#ollama-pod-workloads)
+- [Sharing a ResoureClaim](#sharing-a-resoureclaim)
 6 minutes - Run Workload YAML that uses DRA
 5 minutes - Confirm DRA uses
 
@@ -3032,7 +3035,7 @@ Status:
 Events:  <none>
 ```
 
-#### Workload
+#### Ollama Pod Workloads
 
 Ollama (Omni-Layer Learning Language Acquisition Model) is a tool that runs LLMs locally.
 Ollama.com hosts many LLM models.
@@ -3397,8 +3400,7 @@ Output:
 Overall, Kubernetes is a powerful container orchestration platform that offers several benefits and features that can help you manage your containers more effectively and efficiently.
 ```
 
-Any difference in the response?
-
+How do the responses differ?
 
 ## Sharing a ResoureClaim
 
@@ -3613,7 +3615,9 @@ Spec:
 Events:                    <none>
 ```
 
-Create multiple Pods that reference the ResourceClaimTemplate:
+Create multiple Pods that reference the ResourceClaimTemplate.
+
+# Job with ResourceClaimTemplate
 
 Use a Job to create multiple Pods that refers to the same ResourceClaimTemplate.
 Take a look at the Job manifest:
@@ -3638,7 +3642,7 @@ spec:
       containers:
       - name: busybox
         image: busybox:1.37.0
-        command: ["env","sleep", "600"]
+        command: ["env", "sleep", "600"]
         resources:
           claims:
           - name: my-gpu-claim

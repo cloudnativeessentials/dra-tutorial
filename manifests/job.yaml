@@ -12,7 +12,7 @@ spec:
       containers:
       - name: busybox
         image: busybox:1.37.0
-        command: ["/bin/bash","-c", "env && sleep 600"]
+        command: ["/bin/sh","-c","env && sleep 600"]
         resources:
           claims:
           - name: my-gpu-claim
