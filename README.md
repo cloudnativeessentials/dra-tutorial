@@ -35,8 +35,6 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Ollama Pod Workloads](#ollama-pod-workloads)
 - [Sharing a ResoureClaim](#sharing-a-resoureclaim)
 - [Job with ResourceClaimTemplate](#job-with-resourceclaimtemplate)
-6 minutes - Run Workload YAML that uses DRA
-5 minutes - Confirm DRA uses
 
 
 ## Module 1: Introduction to Dynamic Resource Allocation
