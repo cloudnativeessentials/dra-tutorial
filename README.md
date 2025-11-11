@@ -27,9 +27,11 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Intel DRA Driver](#intel-dra-driver) 5 minutes
 - [DRANET](#dranet) 5 minutes
 
-[Module 4 - Deploy DRA and Workloads](#module-4-deploying-dra-and-workloads) (17 minutes) 
-- [Deploy a DeviceClass](#deploying-a-deviceclass)
-- 6 minutes - Explore Workload YAML that uses DRA
+[Module 4 - Deploy a DRA Driver and Workloads](#module-4-deploy-a-dra-driver-and-workloads (17 minutes) 
+- [Deploy a DeviceClass](#deploy-a-deviceclass)
+- [Create RBAC Authorization for the DRA Driver](#create-rbac-authorization-for-the-dra-driver)
+- [PriorityClass](#priorityclass)
+6 minutes - Explore Workload YAML that uses DRA
 6 minutes - Run Workload YAML that uses DRA
 5 minutes - Confirm DRA uses
 
@@ -2453,7 +2455,7 @@ spec:
     resourceClaimName: cloud-network-dra-net
 ```
 
-# Module 4: Deploy DRA and Workloads
+# Module 4: Deploy a DRA Driver and Workloads
 
 ## Deploy a DeviceClass
 
@@ -2751,7 +2753,7 @@ spec:
 Create the DRA driver in a DaemonSet, the driver binary is in a container image:
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
+kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml
 ```
 
 Output:
@@ -3228,7 +3230,7 @@ Events:        <none>
 
 Any additional Pods that use this ResourceClaim are also listed under `Reserved For:`
 
-Check how the DRA driver handled device allocation:
+Check how the DRA driver handled the device allocation:
 
 ```shell
 kubectl logs -l app.kubernetes.io/name=dra-example-driver -n dra-tutorial
@@ -3283,6 +3285,8 @@ GPU_DEVICE_7_SHARING_STRATEGY=TimeSlicing
 GPU_DEVICE_7_TIMESLICE_INTERVAL=Default
 HOME=/root
 ```
+
+Environment variables are set in each container to indicate their accessible GPU(s) and how the GPUs would be configured.
 
 In the Ollama Pod, pull Meta's [llama 3.2 LLM](https://ollama.com/library/llama3.2):
 
@@ -3396,7 +3400,7 @@ Overall, Kubernetes is a powerful container orchestration platform that offers s
 Any difference in the response?
 
 
-## Sharing ResoureClaim
+## Sharing a ResoureClaim
 
 Let's add another Pod that references the same ResourceClaim.
 
@@ -3552,16 +3556,16 @@ spec:
       requests:
       - name: req-0
         firstAvailable:
-        - name: more-than-40gi 
+        - name: 80gi-gpu
           deviceClassName: gpu.example.com
           allocationMode: ExactCount
           count: 1
           selectors:
           - cel:
               expression: |-
-                device.capacity["gpu.example.com"].memory > quantity("40Gi")
+                device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
-This ResourceClaimTemplate requests for one device with more than 40Gi.
+This ResourceClaimTemplate requests for one device with 80Gi memory.
 
 Create the ResourceClaimTemplate:
 
@@ -3589,9 +3593,9 @@ Annotations:  <none>
 API Version:  resource.k8s.io/v1
 Kind:         ResourceClaimTemplate
 Metadata:
-  Creation Timestamp:  2025-11-10T20:37:06Z
-  Resource Version:    27725
-  UID:                 6a5189bb-cd4c-4cd0-afc7-681d31c7bf3f
+  Creation Timestamp:  2025-11-10T23:05:21Z
+  Resource Version:    40903
+  UID:                 51a99a22-fdcd-43db-a299-d9af28b9eaf0
 Spec:
   Metadata:
   Spec:
@@ -3601,10 +3605,10 @@ Spec:
           Allocation Mode:    ExactCount
           Count:              1
           Device Class Name:  gpu.example.com
-          Name:               40gi
+          Name:               80gi-gpu
           Selectors:
             Cel:
-              Expression:  device.capacity["gpu.example.com"].memory > quantity("40Gi")
+              Expression:  device.capacity["gpu.example.com"].memory == quantity("80Gi")
         Name:              req-0
 Events:                    <none>
 ```

@@ -375,7 +375,6 @@ Expected output:
 ```
 REPOSITORY                                                    TAG            IMAGE ID       CREATED          SIZE
 registry.example.com/dra-example-driver                       v0.1.0         00b45f4b7b64   53 seconds ago   126MB
-registry.k8s.io/dra-example-driver/dra-example-driver-build   golang1.23.1   bfdc38eab2d4   8 minutes ago    1.68GB
 registry.example.com/dra-example-driver-build                 golang1.23.1   bfdc38eab2d4   8 minutes ago    1.68GB
 kindest/node                                                  v1.32.0        2d9b4b74084a   3 months ago     1.05GB
 ```
