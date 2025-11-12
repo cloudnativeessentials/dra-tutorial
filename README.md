@@ -51,6 +51,11 @@ Compared to device plugins, DRA offers the following benefits to use specialized
 - device sharing with multiple Pods
 - centralized device categorization
 - flexible configuration like dynamic GPU partitioning
+- accelerators and other devices as well like NICs, FPGAs, network-attached devices
+- pass configuration parameters to devices
+- Pod is scheduled when required resources are available
+- more features coming
+
 
 ### DRA Overview
 
