@@ -320,7 +320,8 @@ spec:
   - cel:
       expression: "device.driver == 'gpu.vendor.com'"
 ```
-Under the DeviceClass `.spec.selectors`, a Common Expression Language (CEL) exression is used to select a device
+Under the DeviceClass `.spec.selectors`, a Common Expression Language (CEL) expression is used to select a device. <br>
+You can use multiple CEL expressions e.g. `device.driver == 'gpu.vendor.com' && device.attributes['gpu.vendor.com'].type == 'gpu' && device.attributes['gpu.vendor.com'].accelerator-type == 'high-performance'`
 
 We'll look into Intel and NVIDIA's DRA resources later but for now, Intel's DeviceClass is the following:
 ```yaml
@@ -336,7 +337,10 @@ spec:
   extendedResourceName: intel.com/gpu
 ```
 
-From `kubectl explain deviceclass.spec.extendedResourceName`:
+An `extendedResourceName` is an additional way for Pods to request resources. <br>
+It is in alpha as of v1.34. <br>
+
+From `kubectl explain deviceclass.spec.extendedResourceName`: <br>
 ```shell
 ExtendedResourceName is the extended resource name for the devices of this
     class. The devices of this class can be used to satisfy a pod's extended
