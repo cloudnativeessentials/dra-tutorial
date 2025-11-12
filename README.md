@@ -176,51 +176,49 @@ In v1.34, the core DRA APIs `resource.k8s.io/v1` graduated to stable from `resou
 
 ### DRA Driver
 
-A DRA driver 
-2 components that coordinate with each other
+A DRA driver has 2 components that coordinate with each other <br>
 - node-local kubelet plugin (DaemonSet) on nodes with the advertised device(s)
 - centralized controller running in HA (deployment)
 
-Centralized Controller
+Centralized Controller <br>
 - performs the ResourceClaim creation from ResourceClaimTemplates
 - performs the actual ResourceClaim allocation after a node is selected by the scheduler
 - performs deallocation of ResourceClaim once deleted
 
-Node-local kubelet plugin
+Node-local kubelet plugin <br>
 - advertizes the node-local state that the centralize controller needs to help make allocation decisions
 - makes node-local operations required to prepare a ResourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
 - pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
-
 - scheduler plugin that detects Pods which references a ResourceClaim or ResourceClaimTemplate and ensures the resource is allocated where the Pod is scheduled to
 
 ### DRA Resources
 
 #### DRA Driver
 
-The DRA Driver has two main components:
-dra-controller: manages resource allocation requests 
-dra-kubelet-plugin: handles resource allocation on the node, typically installed as a DaemonSet and may use node affinity to schedule DaemonSets appropriately e.g. `feature.node.kubernetes.io/pci-10de.present=true`, `feature.node.kubernetes.io/cpu-model.vendor_id=NVIDIA` or `nvidia.com/gpu.present=true`
+The DRA Driver has two main components: <br>
+- centralized controller: manages resource allocation requests 
+- node-local kubelet-plugin: handles resource allocation on the node, typically installed as a DaemonSet and may use node affinity to schedule DaemonSets appropriately e.g. `feature.node.kubernetes.io/pci-10de.present=true`, `feature.node.kubernetes.io/cpu-model.vendor_id=NVIDIA` or `nvidia.com/gpu.present=true`
 
-ResourceSlice: created by the DRA driver, tied to the node, represents devices represented by the driver on the node. Used by Kubernetes to find nodes with devices for scheduling Pods to nodes that can access the requested resource(s)
+ResourceSlice: created by the DRA driver, tied to the node, represents devices represented by the driver on the node. Used by Kubernetes to find nodes with devices for scheduling Pods to nodes that can access the requested resource(s) <br>
 
-DeviceClass: defines category of devices e.g. gpu.nvidia.com. Parameters in DeviceClasses match to a device(s) in ResourceSlices
+DeviceClass: defines category of devices e.g. gpu.nvidia.com. Parameters in DeviceClasses match to a device(s) in ResourceSlices <br>
 
-ResourceClaim: request for specific devices from a DeviceClass
-Can be referenced by multiple Pods if the device can be shared and not tied to any Pod's lifecycle
+ResourceClaim: request for specific devices from a DeviceClass <br>
+ResourceClaims can be referenced by multiple Pods if the device can be shared and not tied to any Pod's lifecycle <br>
 
-ResourceClaimTemplate: template to generate per-Pod ResourceClaims. When a ResourceClaim is created from a ResourceClaimTemplate, it is bound to the Pod's lifecycle
+ResourceClaimTemplate: template to generate per-Pod ResourceClaims. When a ResourceClaim is created from a ResourceClaimTemplate, it is bound to the Pod's lifecycle <br>
 
 #### ResourceSlice
 
-Represents the available devices represented by a driver on the node.
-The DRA driver creates the ResourceSlice.
-The Kubernetes scheduler uses ResourceSlices to determine where to allocate Pods.
+Represents the available devices represented by a driver on the node. <br>
+The DRA driver creates the ResourceSlice. <br>
+The Kubernetes scheduler uses ResourceSlices to determine where to allocate Pods. <br>
 
 ```shell
 kubectl explain resourceslice | head -n 30
 ```
 
-Output:
+Output: <br>
 ```shell
 GROUP:      resource.k8s.io
 KIND:       ResourceSlice
@@ -259,7 +257,7 @@ Within a ResourceSlice are the following:
   - Devices: are devices in a managed pool, devices lists information like versions, capacity, or other attributes
   - Nodes: the nodes that can access the resources
 
-Here's an example of a ResourceSlice:
+Here's an example of a ResourceSlice: <br>
 ```yaml
 apiVersion: resource.k8s.io/v1
 kind: ResourceSlice
@@ -286,14 +284,15 @@ spec:
 
 #### DeviceClass
 
-The DeviceClass resource correspondes a resource driver with a named resource in the cluster.
-Contains pre-defined selection criteria for certain devices and configuration for them.
-Can include optional parameters like a GPUClaimParameters that we'll look at later.
+The DeviceClass resource correspondes a resource driver with a named resource in the cluster. <br>
+Contains pre-defined selection criteria for certain devices and configuration for them. <br>
+Can include optional parameters like a GPUClaimParameters that we'll look at later. <br>
 
-Each request to allocate a device in a ResourceClaim must reference exactly one DeviceClass.
-A DeviceClas defines a category of devices.
-The DeviceClass may be installed with the driver.
+Each request to allocate a device in a ResourceClaim must reference exactly one DeviceClass. <br>
+A DeviceClas defines a category of devices. <br>
+The DeviceClass may be installed with the driver. <br>
 
+Use `kubectl explain` see the DeviceClass description:
 ```shell
 kubectl explain deviceclass | head -n 8
 ```
@@ -310,7 +309,7 @@ DESCRIPTION:
     a claim to apply these presets. Cluster scoped.
 ```
 
-A DeviceClass template is:
+An example DeviceClass manifest is: 
 ```yaml
 apiversion: resource.k8s.io/v1alpha3
 kind: DeviceClass
@@ -321,9 +320,9 @@ spec:
   - cel:
       expression: "device.driver == 'gpu.vendor.com'"
 ```
-Under the DeviceClass .spec.selectors, a Common Expression Language (CEL) exression is used to select a device
+Under the DeviceClass `.spec.selectors`, a Common Expression Language (CEL) exression is used to select a device
 
-Intel's DeviceClass is the following:
+We'll look into Intel and NVIDIA's DRA resources later but for now, Intel's DeviceClass is the following:
 ```yaml
 apiVersion: resource.k8s.io/v1
 kind: DeviceClass
@@ -352,11 +351,11 @@ ExtendedResourceName is the extended resource name for the devices of this
 
 #### ResourceClaim
 
-A ResourceClaim describes a request for access to resources in the cluster, for use by workloads. 
-For example, if a workload needs an accelerator device with specific properties, this is how that request is expressed. 
-The `status` stanza tracks whether this claim has been satisfied and what specific resources have been allocated.
-A ResourceClaim is a claim to use a specific DeviceClass and represents an acual resource allocation made by the resource driver.
-Users create ResourceClaims and reger to the DeviceClass they want to allocate resources for. The Pod can then use these resources with a ResourceClaim.
+A ResourceClaim describes a request for access to resources in the cluster, for use by workloads. <br>
+For example, if a workload needs an accelerator device with specific properties, this is how that request is expressed. <br>
+The `status` stanza tracks whether this claim has been satisfied and what specific resources have been allocated. <br>
+A ResourceClaim is a claim to use a specific DeviceClass and represents an acual resource allocation made by the resource driver. <br>
+Users create ResourceClaims and reger to the DeviceClass they want to allocate resources for. The Pod can then use these resources with a ResourceClaim. <br>
 
 Let's use `kubectl explain` to see the ResourceClaim's description:
 
@@ -379,10 +378,10 @@ DESCRIPTION:
 ```
 
 
-ResourceClaims can be created manually by users or by Kubernetes from a ResourceClaimTemplate.
-If a ResourceClaimTemplate is used then the ResourceClaim is bound to the Pod that uses the ResourceClaimTemplate and bound to the Pod's lifecycle.
+ResourceClaims can be created manually by users or by Kubernetes from a ResourceClaimTemplate. <br>
+If a ResourceClaimTemplate is used then the ResourceClaim is bound to the Pod that uses the ResourceClaimTemplate and bound to the Pod's lifecycle. <br>
 
-Independently created ResourceClaims can be shared among multiple Pods.
+User / independently / not-from-ResourceClaimTemplate created ResourceClaims can be shared among multiple Pods. <br>
 
 Example ResourceClaim:
 ```yaml
@@ -403,13 +402,13 @@ spec:
               device.attributes["driver.vendor.com"].type == "gpu" &&
               device.capacity["driver.vendor.com"].memory == quantity("80Gi")
 ```
-This ResourceClaim Ceates requests devices in the `gpu.vendor.com` DeviceClass that matches both of the following parameters:
+This ResourceClaim Ceates requests devices in the `gpu.vendor.com` DeviceClass that matches both of the following parameters: <br>
 - Devices that have a `driver.vendor.com/type` attribute with a value of gpu.
 - Devices that have 80Gi of capacity.
 
 #### ResourceClaimTemplate
 
-A ResourceClaimTemplate is a template to create ResourceClaims from for per-Pod access to resources.
+A ResourceClaimTemplate is a template to create ResourceClaims from for per-Pod access to resources. <br>
 
 Let's use `kubectl explain` to see the ResourceClaimTemplate's description:
 
@@ -427,7 +426,7 @@ DESCRIPTION:
     ResourceClaimTemplate is used to produce ResourceClaim objects.
 ```
 
-ResourceClaimTemplates may look similar to ResourceClaims since they are used to generate ResourceClaims. Here's an example ResourceClaimTemplate that would produce the example ResourceClaim above:
+ResourceClaimTemplates may look similar to ResourceClaims since they are used to generate ResourceClaims. Here's an example ResourceClaimTemplate that would produce the example ResourceClaim above: <br>
 
 ```yaml
 apiVersion: resource.k8s.io/v1
@@ -453,8 +452,9 @@ spec:
 ## Module 3: A Look into DRA Drivers
 
 ### NVIDIA DRA Driver
-The NVIDIA DRA Driver is installed via a helm chart.
-Let's dive into NVDIA's DRA Driver by first adding the NVIDIA helm repository:
+
+The NVIDIA DRA Driver is installed via a helm chart. <br>
+Let's dive into NVDIA's DRA Driver by first adding the NVIDIA helm repository: <br>
 
 ```shell
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
@@ -469,6 +469,7 @@ Update Complete. ⎈Happy Helming!⎈
 ```
 
 Let's confirm the chart:
+
 ```shell
 helm show chart nvidia/nvidia-dra-driver-gpu
 ```
@@ -484,14 +485,15 @@ type: application
 version: 25.8.0
 ```
 
-Note: there will be a lot of output in the following steps, we will highlight key sections.
-The steps are to help show how you can introspect into a helm chart for a DRA driver.
+Note: there will be a lot of output in the following steps, we will highlight key sections. <br>
+The steps are to help show how you can introspect into a helm chart for a DRA driver. <br>
 
-As we look into NVIDIA's DRA driver, we will see many references to ComputeDomain.
-With the NVIDIA DRA driver, workloads request a ComputeDomain then NVIDIA's DRA Driver for GPUs works to share GPU memory securely with NVLink, a high-speed interconnect for GPUs and CPUs, 7x faster than PCIe gen 5. 
-This allows Kubernetes to use a rack of small NVIDIA GPUs into a "supercomputer" such as the [GB200 NVL72](https://www.nvidia.com/en-us/data-center/gb200-nvl72/).
+As we look into NVIDIA's DRA driver, we will see many references to ComputeDomain. <br>
+With the NVIDIA DRA driver, workloads request a ComputeDomain then NVIDIA's DRA Driver for GPUs works to share GPU memory securely with NVLink, a high-speed interconnect for GPUs and CPUs, 7x faster than PCIe gen 5. <br>
+This allows Kubernetes to use a rack of small NVIDIA GPUs into a "supercomputer" such as the [GB200 NVL72](https://www.nvidia.com/en-us/data-center/gb200-nvl72/). <br>
 
-Let's look at the configuration options:
+Let's look at the configuration options: 
+
 ```shell
 helm show values nvidia/nvidia-dra-driver-gpu
 ```
@@ -748,9 +750,9 @@ kubeletPlugin:
 ```
 
 As you can see, there are many options that can be configured during `helm install`.
-For more information, see the [NVIDIA docs](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator)
+For more information, see the [NVIDIA docs](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator). <br>
 
-Let's look at all the information from the chart (this will be a lot of output):
+Let's look at all the information from the chart (this will be a lot of output): <br>
 
 ```shell
 helm show all nvidia/nvidia-dra-driver-gpu
@@ -1249,7 +1251,7 @@ controller:
             operator: "Exists"
 ```
 
-Now let's take a look at the NVIDIA DRA driver's kubelet plugin:
+Now let's take a look at the NVIDIA DRA driver's kubelet plugin: <br>
 
 ```shell
 helm show all nvidia/nvidia-dra-driver-gpu | grep -A 19 "kubeletPlugin:" 
@@ -1279,8 +1281,8 @@ kubeletPlugin:
         privileged: true
 ```
 
-To install the NVIDIA DRA driver, we would do a `helm install`. 
-Let's do a dry-run to simulate the Helm chart install:
+To install the NVIDIA DRA driver, we would do a `helm install`. <br>
+Let's do a dry-run to simulate the Helm chart install: <br>
 
 ```shell
 helm install --dry-run nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
@@ -1290,7 +1292,7 @@ helm install --dry-run nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
     --set nvidiaDriverRoot=/run/nvidia/driver
 ```
 
-The command above uses an operator-provided GPU driver, for host-provided GPU drivers use the `--set resources.gpus.enabled=false` option
+The command above uses an operator-provided GPU driver, for host-provided GPU drivers use the `--set resources.gpus.enabled=false` option. <br>
 
 Output:
 ```shell
@@ -1860,7 +1862,7 @@ spec:
   # All ResourceSlices are matched.
 ```
 
-The NVIDIA DRA helm chart installed the following:
+The NVIDIA DRA helm chart installed the following: <br>
 - Namespace: nvidia-dra-driver-gpu
 - ServiceAccount: compute-domain-daemon-service-account
 - ServiceAccount: nvidia-dra-driver-gpu-service-account-controller
@@ -1887,15 +1889,15 @@ The NVIDIA DRA helm chart installed the following:
 - ValidatingAdmissionPolicy: resourceslices-policy-nvidia-dra-driver-gpu
 - ValidatingAdmissionPolicyBinding: resourceslices-policy-nvidia-dra-driver-gpu
 
-For more information on the NVIDIA DRA driver installation see https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html
+For more information on the NVIDIA DRA driver installation see https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/dra-intro-install.html. <br>
 
 ### Intel DRA Driver
 
-Intel hosts its GPU DRA Driver on [GitHub intel/intel-resource-drivers-for-kubernetes](https://github.com/intel/intel-resource-drivers-for-kubernetes/blob/main/charts/intel-gpu-resource-driver/README.md)
+Intel hosts its GPU DRA Driver on [GitHub intel/intel-resource-drivers-for-kubernetes](https://github.com/intel/intel-resource-drivers-for-kubernetes/blob/main/charts/intel-gpu-resource-driver/README.md). <br>
 
-Intel's GPU DRA Driver is also installed via a Helm chart.
+Intel's GPU DRA Driver is also installed via a Helm chart. <br>
 
-Let's look at Intel's GPU DRA Driver through a dry-run simulation of the helm install:
+Let's look at Intel's GPU DRA Driver through a dry-run simulation of the helm install: <br>
 
 ```shell
 helm install --dry-run intel-gpu-resource-driver oci://ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart \
@@ -2102,7 +2104,7 @@ NOTES:
 Thank you for installing intel-gpu-resource-driver-chart.
 ```
 
-The Intel DRA helm chart installed the following:
+The Intel DRA helm chart installed the following: <br>
 - Namespace: intel-gpu-resource-driver
 - ServiceAccount: intel-gpu-sa
 - ClusterRole: intel-gpu-resource-driver-role
@@ -2113,21 +2115,21 @@ The Intel DRA helm chart installed the following:
 - ValidatingAdmissionPolicy: resourceslices-policy-dra-kubelet-plugin-gpu
 - ValidatingAdmissionPolicyBinding: resourceslices-policy-dra-kubelet-plugin-gpu
 
-Since our environment does not have real GPUs, in the next module we will install example GPU drivers.
+Since our environment does not have real GPUs, in the next module we will install example GPU drivers. <br>
 
 ### DRANET 
 
-Dynamic Resource Allocation is not specific to GPUs. 
-Google's DRANET is a Kubernetes Network Driver for high-performance networking.
-The DRANET driver communicated with the kubelet though the DRA API and the container runtime via the node resource interface.
-Then the Pod's network namespace is created, the container runtime initiates a GRPC call to DRANET via node resource interface.
+Dynamic Resource Allocation is not specific to GPUs. <br>
+Google's DRANET is a Kubernetes Network Driver for high-performance networking. <br>
+The DRANET driver communicated with the kubelet though the DRA API and the container runtime via the node resource interface. <br>
+Then the Pod's network namespace is created, the container runtime initiates a GRPC call to DRANET via node resource interface. <br>
 
-More on DRANET can be found here:
+More on DRANET can be found here: <br>
 https://github.com/google/dranet
-https://dranet.dev/docs/
+https://dranet.dev/docs/ <br>
 
-DRANET is installed via a yaml file.
-Let's inspect the yaml file:
+DRANET is installed via a yaml file. <br>
+Let's inspect the yaml file: <br>
 
 ```shell
 curl https://raw.githubusercontent.com/google/dranet/refs/heads/main/install.yaml
@@ -2318,7 +2320,7 @@ spec:
 ---
 ```
 
-Let's take a look at the objects that would be created with a `--dry-run=client`
+Let's take a look at the objects that would be created with a `--dry-run=client`. <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/google/dranet/refs/heads/main/install.yaml --dry-run=client
@@ -2332,7 +2334,7 @@ serviceaccount/dranet created (dry run)
 daemonset.apps/dranet created (dry run)
 ```
 
-A ResourceSlice would be created similar to the following:
+A ResourceSlice would be created similar to the following: <br>
 
 ```yaml
 apiVersion: resource.k8s.io/v1
@@ -2422,7 +2424,7 @@ spec:
               expression: device.attributes["dra.net"].cloudNetwork == "dra-1-vpc"
 ```
 
-An example Pod looks like:
+An example Pod that uses DRANET looks like: <br>
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -2443,7 +2445,8 @@ spec:
 
 ### Deploy a DeviceClass
 
-Create the `dra-tutorial` namespace:
+Create the `dra-tutorial` namespace: <br>
+
 ```shell
 kubectl create namespace dra-tutorial
 ```
@@ -2453,8 +2456,8 @@ Output:
 namespace/dra-tutorial created
 ```
 
-Create the DeviceClass that represents the supported devices of the DRA driver.
-Let's take a look at the manifest for the DeviceClass:
+Create the DeviceClass that represents the supported devices of the DRA driver. <br>
+Let's take a look at the manifest for the DeviceClass: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deviceclass.yaml
@@ -2471,11 +2474,12 @@ spec:
   - cel: 
       expression: "device.driver == 'gpu.example.com'"
 ```
-Commen Express Language (CEL) can be used to filter for specific attributes.
+Commen Express Language (CEL) can be used to filter for specific attributes. <br>
 
-Let's compare this DeviceClass with the ones from NVIDIA and Intel:
+Let's compare this DeviceClass with the ones from NVIDIA and Intel: <br>
 
-NVIDIA:
+NVIDIA: <br>
+
 ```shell
 helm install --dry-run nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
     --create-namespace \
@@ -2510,7 +2514,8 @@ spec:
 # Source: nvidia-dra-driver-gpu/templates/validatingadmissionpolicy.yaml
 ```
 
-Intel:
+Intel: <br>
+
 ```shell
 helm install --dry-run intel-gpu-resource-driver oci://ghcr.io/intel/intel-resource-drivers-for-kubernetes/intel-gpu-resource-driver-chart \
     --namespace "intel-gpu-resource-driver" \
@@ -2538,7 +2543,7 @@ spec:
 ---
 ```
 
-Create the DeviceClass for the example DRA driver:
+Create the DeviceClass for the example DRA driver: <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/deviceclass.yaml
@@ -2551,9 +2556,9 @@ deviceclass.resource.k8s.io/gpu.example.com created
 
 ### Create RBAC Authorization for the DRA Driver
 
-Before you deploy a DRA driver, create RBAC authorization for the DRA driver to control ResourceSlices, get Nodes, and get ResourceClaims.
+Before you deploy a DRA driver, create RBAC authorization for the DRA driver to control ResourceSlices, get Nodes, and get ResourceClaims. <br>
 
-Let's take a look at the ServiceAccount, ClusterRole, ClusterRoleBinding that binds the ClusterRole to the Service Account:
+Let's take a look at the ServiceAccount, ClusterRole, ClusterRoleBinding that binds the ClusterRole to the Service Account: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/rbac.yaml
@@ -2601,7 +2606,7 @@ roleRef:
 ---
 ```
 
-Create the ServiceAccount, ClusterRole, and ClusteRoleBinding:
+Create the ServiceAccount, ClusterRole, and ClusteRoleBinding: <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/rbac.yaml
@@ -2616,9 +2621,9 @@ clusterrolebinding.rbac.authorization.k8s.io/dra-example-driver-role-binding cre
 
 ### PriorityClass
 
-Create the PriorityClass to prevent preemption of the DRA driver:
+Create the PriorityClass to prevent preemption of the DRA driver: <br>
 
-Let's look at the PriorityClass:
+Let's look at the PriorityClass: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/priorityclass.yaml
@@ -2648,7 +2653,7 @@ priorityclass.scheduling.k8s.io/dra-driver-high-priority created
 
 ### Deploy the DRA Driver
 
-Before creating the example DRA driver, let's take a look at the DRA driver's manifest
+Before creating the example DRA driver, let's take a look at the DRA driver's manifest: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml 
@@ -2734,7 +2739,7 @@ spec:
           path: /var/run/cdi
 ```
 
-Create the DRA driver in a DaemonSet, the driver binary is in a container image:
+Create the DRA driver in a DaemonSet, the driver binary is in a container image: <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/dra-driver-daemonset.yaml
@@ -2762,7 +2767,7 @@ pod/dra-example-driver-kubeletplugin-q7whd   1/1     Running   0          2m17s
 
 ### ResourceSlice
 
-A ResourceSlice would be created. Let's take a look into the ResourceSlice
+A ResourceSlice would be created. Let's take a look into the ResourceSlice. <br>
 
 ```shell
 kubectl get resourceslice
@@ -2774,7 +2779,7 @@ NAME                                NODE          DRIVER            POOL        
 kind-worker-gpu.example.com-w9pv9   kind-worker   gpu.example.com   kind-worker   7m48s
 ```
 
-Describe the ResourceSlice to see the "fictional" devices:
+Describe the ResourceSlice to see the "fictional" devices: <br>
 
 ```shell
 kubectl describe $(kubectl get resourceslice -o name)
@@ -2930,7 +2935,7 @@ Events:                    <none>
 
 ### ResourceClaim
 
-Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest:
+Create a ResourceClaim to claim the DeviceClass. First look at the ResourceClaim manifest: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
@@ -2956,11 +2961,11 @@ spec:
               expression: |-
                 device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
-This manifest creates ResourceClaim that requests for 1 device in the gpu.example.com DeviceClass that have 80Gi of capacity.
+This manifest creates ResourceClaim that requests for 1 device in the gpu.example.com DeviceClass that have 80Gi of capacity. <br>
 
-`alloctionMode` defines how devices are allocated, the options are `ExactCount` or `All` in which requests for all matching devices in the pool will be allocated
+`alloctionMode` defines how devices are allocated, the options are `ExactCount` or `All` in which requests for all matching devices in the pool will be allocated. <br>
 
-Create the ResourceClaim:
+Create the ResourceClaim: <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaim.yaml
@@ -3019,12 +3024,12 @@ Events:  <none>
 ### Ollama Pod Workloads
 
 Ollama (Omni-Layer Learning Language Acquisition Model) is a tool that runs LLMs locally.
-Ollama.com hosts many LLM models.
+Ollama.com hosts many LLM models. <br>
 
-Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image.
-If you're using a GPU, you can use the `ollama/ollama` container image to take advantage of the GPU.
+Let's deploy an Ollama Pod with the `alpine/ollama` container image which is a minimal CPU-only image. <br>
+If you're using a GPU, you can use the `ollama/ollama` container image to take advantage of the GPU. <br>
 
-Let's take a look at the Pod manifest:
+Let's take a look at the Pod manifest: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod.yaml
@@ -3131,9 +3136,9 @@ Status:
 Events:        <none>
 ```
 
-The ResourceClaim shows that the ollama Pod reserved gpu-7.
-It reserves only one GPU since the ResourceClaim had `allocationMode: ExactCount` and `count: 1`
-If the ResourceClaim had `allocationMode: All`, then the ResourceClaim would claim all devices that satisfies the request selection CEL expresion and the output would be similar to the following in which the ResouceClaim claims 9 GPUs for the Pod:
+The ResourceClaim shows that the ollama Pod reserved gpu-7. <br>
+It reserves only one GPU since the ResourceClaim had `allocationMode: ExactCount` and `count: 1`. <br>
+If the ResourceClaim had `allocationMode: All`, then the ResourceClaim would claim all devices that satisfies the request selection CEL expresion and the output would be similar to the following in which the ResouceClaim claims 9 GPUs for the Pod: <br>
 
 ```shell
 Name:         example-resource-claim
@@ -3212,9 +3217,9 @@ Status:
 Events:        <none>
 ```
 
-Any additional Pods that use this ResourceClaim are also listed under `Reserved For:`
+Any additional Pods that use this ResourceClaim are also listed under `Reserved For:` <br>
 
-Check how the DRA driver handled the device allocation:
+Check how the DRA driver handled the device allocation: <br>
 
 ```shell
 kubectl logs -l app.kubernetes.io/name=dra-example-driver -n dra-tutorial
@@ -3229,7 +3234,7 @@ I1110 18:54:37.680486       1 driver.go:107] PrepareResourceClaims is called: nu
 I1110 18:54:37.683431       1 driver.go:134] Returning newly prepared devices for claim 'a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a': [{[example-gpu] kind-worker gpu-7 [k8s.gpu.example.com/gpu=common k8s.gpu.example.com/gpu=a0db2f1d-f8e8-4143-a5c2-d29877cc2d8a-gpu-7]}]
 ```
 
-Check the Pod
+Check the Pod: <br>
 
 ```shell
 kubectl get pods -n dra-tutorial -l app=ollama
@@ -3241,7 +3246,7 @@ NAME     READY   STATUS    RESTARTS   AGE
 ollama   1/1     Running   0          2m5s
 ```
 
-Check the environment variables in the Ollama Pod:
+Check the environment variables in the Ollama Pod: <br>
 
 ```shell
 kubectl -n dra-tutorial exec ollama -- env
@@ -3270,13 +3275,14 @@ GPU_DEVICE_7_TIMESLICE_INTERVAL=Default
 HOME=/root
 ```
 
-Environment variables are set in each container to indicate their accessible GPU(s) and how the GPUs would be configured.
+Environment variables are set in each container to indicate their accessible GPU(s) and how the GPUs would be configured. <br>
 
-In the Ollama Pod, pull Meta's [llama 3.2 LLM](https://ollama.com/library/llama3.2):
+In the Ollama Pod, pull Meta's [llama 3.2 LLM](https://ollama.com/library/llama3.2): <br>
 
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama pull llama3.2
 ```
+
 Output:
 ```shell
 pulling manifest 
@@ -3291,13 +3297,13 @@ writing manifest
 success 
 ```
 
-Test the Llama model (this will take about 4 minutes):
+Test the Llama model (this will take about 4 minutes): <br>
 
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama run llama3.2 "what is kubernetes"
 ```
 
-Output (output may vary):
+Output (output may vary): <br>
 ```shell
 Kubernetes (also known as K8s) is an open-source container orchestration system for automating the deployment, scaling, and management of containerized applications. It was originally designed by Google, and is now maintained by the Cloud Native Computing Foundation (CNCF).
 
@@ -3337,10 +3343,10 @@ Kubernetes provides a platform-agnostic way to deploy, manage, and scale applica
 In summary, Kubernetes is an open-source container orchestration system that automates the deployment, scaling, and management of containerized applications. It provides a flexible, scalable, and secure environment for building cloud-native applications.
 ```
 
-Meta's Llama 3.2 (3B parameters) collection of LLMs is 2.0 GB.
-Let's use a smaller model like [tinyllama](https://ollama.com/library/tinyllama).
+Meta's Llama 3.2 (3B parameters) collection of LLMs is 2.0 GB. <br>
+Let's use a smaller model like [tinyllama](https://ollama.com/library/tinyllama). <br>
 
-In the Ollama Pod, pull the tinyllama LLM:
+In the Ollama Pod, pull the tinyllama LLM: <br>
 
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama pull tinyllama:1.1b
@@ -3359,7 +3365,7 @@ writing manifest
 success 
 ```
 
-and run the same query
+Run the same query: <br>
 ```shell
 kubectl -n dra-tutorial exec ollama -- ollama run tinyllama:1.1b "what is kubernetes"
 ```
@@ -3381,13 +3387,13 @@ Output:
 Overall, Kubernetes is a powerful container orchestration platform that offers several benefits and features that can help you manage your containers more effectively and efficiently.
 ```
 
-How do the responses differ?
+How do the responses differ? <br>
 
 ### Sharing a ResoureClaim
 
-Let's add another Pod that references the same ResourceClaim.
+Let's add another Pod that references the same ResourceClaim. <br>
 
-Let's look at the Pod manifest:
+Let's look at the Pod manifest: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/pod2.yaml
@@ -3428,7 +3434,7 @@ Output
 pod/ollama2 created
 ```
 
-Describe the ResourceClaim:
+Describe the ResourceClaim: <br>
 
 ```shell
 kubectl describe resourceclaim -n dra-tutorial example-resource-claim
@@ -3513,14 +3519,14 @@ GPU_DEVICE_7_TIMESLICE_INTERVAL=Default
 HOME=/root
 ```
 
-Both Pods are sharing GPU-7
+In this case, both Pods are sharing GPU-7 <br>
 
 ### ResourceClaimTemplate
 
-We can use a ResourceClaimTemplate to dynamically create ResourceClaims per-Pod.
-In this case, the ResourceClaims are not shareable.
+We can use a ResourceClaimTemplate to dynamically create ResourceClaims per-Pod. <br>
+In this case, the ResourceClaims are not shareable. <br>
 
-Let's look at the ResourceClaimTemplate manifest:
+Let's look at the ResourceClaimTemplate manifest: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaimtemplate.yaml
@@ -3548,9 +3554,9 @@ spec:
               expression: |-
                 device.capacity["gpu.example.com"].memory == quantity("80Gi")
 ```
-This ResourceClaimTemplate requests for one device with 80Gi memory.
+This ResourceClaimTemplate requests for one device with 80Gi memory. <br>
 
-Create the ResourceClaimTemplate:
+Create the ResourceClaimTemplate: <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/resourceclaimtemplate.yaml
@@ -3561,7 +3567,7 @@ Output:
 resourceclaimtemplate.resource.k8s.io/example-resource-claim-template created
 ```
 
-Take a look into the ResourceClaimTemplate with `kubectl describe`:
+Take a look into the ResourceClaimTemplate with `kubectl describe`: <br>
 
 ```shell
 kubectl describe resourceclaimtemplate -n dra-tutorial
@@ -3596,12 +3602,12 @@ Spec:
 Events:                    <none>
 ```
 
-Create multiple Pods that reference the ResourceClaimTemplate.
+Create multiple Pods that reference the ResourceClaimTemplate. <br>
 
 # Job with ResourceClaimTemplate
 
-Use a Job to create multiple Pods that refers to the same ResourceClaimTemplate.
-Take a look at the Job manifest:
+Use a Job to create multiple Pods that refers to the same ResourceClaimTemplate. <br>
+Take a look at the Job manifest: <br>
 
 ```shell
 curl -w "\n" https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/job.yaml
@@ -3632,7 +3638,7 @@ spec:
         resourceClaimTemplateName: example-resource-claim-template
 ```
 
-Create the Job:
+Create the Job: <br>
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/cloudnativeessentials/dra-tutorial/refs/heads/main/manifests/job.yaml
@@ -3665,7 +3671,8 @@ resourceclaim.resource.k8s.io/dra-job-8vh8x-my-gpu-claim-ttmhm   allocated,reser
 resourceclaim.resource.k8s.io/example-resource-claim             allocated,reserved   27m
 ```
 
-Describe each of the new ResourceClaims:
+Describe each of the new ResourceClaims: <br>
+
 ```shell
 kubectl describe $(kubectl get resourceclaim -o name -n dra-tutorial | grep "dra-job") -n dra-tutorial
 ```
@@ -3780,17 +3787,9 @@ Status:
 Events:        <none>
 ```
 
-Check how the DRA driver handled the device allocation:
+In this example, the ResourceClaims from the ResourceClaimTemplate used different GPUs: gpu-1 and gpu-2 (your results will vary). <br>
 
-```shell
-kubectl logs -l app.kubernetes.io/name=dra-example-driver -n dra-tutorial
-```
-
-Describe the DeviceClass
-
-In this example, the ResourceClaims from the ResourceClaimTemplate used different GPUs.
-
-We can confirm with the environment variables from the Job Podss:
+Confirm with the environment variables from the Job Pods: <br>
 
 ```shell
 kubectl get pods -l job-name=dra-job -n dra-tutorial -o name
@@ -3802,7 +3801,7 @@ pod/dra-job-64mw7
 pod/dra-job-8vh8x
 ```
 
-Exec into each Job Pod:
+Exec into each Job Pod: <br>
 
 ```shell
 kubectl -n dra-tutorial exec pod/dra-job-64mw7 -- env
@@ -3829,7 +3828,7 @@ GPU_DEVICE_1_TIMESLICE_INTERVAL=Default
 HOME=/root
 ```
 
-Exec into the other Job Pod:
+Exec into the other Job Pod: <br>
 
 ```shell
 kubectl -n dra-tutorial exec pod/dra-job-8vh8x -- env
@@ -3856,15 +3855,19 @@ GPU_DEVICE_2_TIMESLICE_INTERVAL=Default
 HOME=/root
 ```
 
-We can see that one Job Pod is allocated GPU-1 and the second Job Pod is allocated GPU-2 in this example.
+We can see that one Job Pod is allocated GPU-1 and the second Job Pod is allocated GPU-2 in this example. <br>
 
-The Jobs will complete to run until 4 Job Pods complete.
+The Jobs will complete to run until 4 Job Pods complete. <br>
 
 ## Additional DRA examples
 
 ### DRA Driver for CPU Resources
 
-Not all CPUs are created equal, some have higher performance, some have better cache.
-With a DRA driver, we can use a DRA driver to scans the Node through the Node Resource Interface and publish a ResourceSlice with each CPU represented as a device along with attributes like core ID, coreType, socktID, numaNode.
+Not all CPUs are created equal, some have higher performance, some have better cache. <br>
+With a DRA driver, we can use a DRA driver to scans the Node through the Node Resource Interface and publish a ResourceSlice with each CPU represented as a device along with attributes like core ID, coreType, socktID, numaNode. <br>
 
-Learn more on the [GitHub repo for DRA Driver for CPU Resources](https://github.com/kubernetes-sigs/dra-driver-cpu/)
+[DRA Drive for CPU resources](https://github.com/kubernetes-sigs/dra-driver-cpu/) can be used to increase performance or have precise CPU requests: <br>
+- align resources (CPU, GPU, NIC) on the same NUMA domain
+- request CPUs that are high performance cores or all cores sharing the same L3 cache
+
+Learn more on the [GitHub repo for DRA Driver for CPU Resources](https://github.com/kubernetes-sigs/dra-driver-cpu/). <br>
