@@ -35,6 +35,10 @@ In this tutorial we will install a Kubernetes cluster, review the DRA resources 
 - [Ollama Pod Workloads](#ollama-pod-workloads)
 - [Sharing a ResoureClaim](#sharing-a-resoureclaim)
 - [Job with ResourceClaimTemplate](#job-with-resourceclaimtemplate)
+- [Additional DRA Drivers](#additional-dra-drivers)
+- [DRA Driver for CPU Resources](#dra-driver-for-cpu-resources)
+- [AMD](#amd)
+- [FuriosaAI](#furiosaai)
 
 
 ## Module 1: Introduction to Dynamic Resource Allocation
@@ -186,10 +190,11 @@ Centralized Controller <br>
 - performs deallocation of ResourceClaim once deleted
 
 Node-local kubelet plugin <br>
-- advertizes the node-local state that the centralize controller needs to help make allocation decisions
+- advertises the node-local state that the centralize controller needs to help make allocation decisions
 - makes node-local operations required to prepare a ResourceClaim (parameters may need to be setup) or deallocate a ResourceClaim on a node
 - pass the device associated with prepared ResourceClaim to the kubelet which will then forward to the container runtime
-- scheduler plugin that detects Pods which references a ResourceClaim or ResourceClaimTemplate and ensures the resource is allocated where the Pod is scheduled to
+
+Note: There is also a scheduler plugin that detects Pods which references a ResourceClaim or ResourceClaimTemplate and ensures the resource is allocated where the Pod is scheduled to <br>
 
 ### DRA Resources
 
@@ -3863,7 +3868,7 @@ We can see that one Job Pod is allocated GPU-1 and the second Job Pod is allocat
 
 The Jobs will complete to run until 4 Job Pods complete. <br>
 
-## Additional DRA examples
+## Additional DRA Drivers
 
 ### DRA Driver for CPU Resources
 
@@ -3875,3 +3880,11 @@ With a DRA driver, we can use a DRA driver to scans the Node through the Node Re
 - request CPUs that are high performance cores or all cores sharing the same L3 cache
 
 Learn more on the [GitHub repo for DRA Driver for CPU Resources](https://github.com/kubernetes-sigs/dra-driver-cpu/). <br>
+
+### AMD
+
+For AMD Instinct GPUs and Radeon GPUs, AMD's DRA driver is at https://github.com/ROCm/k8s-gpu-dra-driver <br>
+
+### FuriosaAI
+
+For FuriosaAI NPU which is used for deep learning inferencing, the DRA driver is at https://github.com/furiosa-ai/furiosa-dra-driver-guide <br>
