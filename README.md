@@ -3892,3 +3892,8 @@ For AMD Instinct GPUs and Radeon GPUs, AMD's DRA driver is at https://github.com
 ### FuriosaAI
 
 For FuriosaAI NPU which is used for deep learning inferencing, the DRA driver is at https://github.com/furiosa-ai/furiosa-dra-driver-guide <br>
+
+
+## Video Walkthrough of This Lab
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/FEvgocw4DYE?si=AlHTGkW0hHhUPrUh" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
