@@ -365,8 +365,8 @@ ExtendedResourceName is the extended resource name for the devices of this
 A ResourceClaim describes a request for access to resources in the cluster, for use by workloads. <br>
 For example, if a workload needs an accelerator device with specific properties, this is how that request is expressed. <br>
 The `status` stanza tracks whether this claim has been satisfied and what specific resources have been allocated. <br>
-A ResourceClaim is a claim to use a specific DeviceClass and represents an acual resource allocation made by the resource driver. <br>
-Users create ResourceClaims and reger to the DeviceClass they want to allocate resources for. The Pod can then use these resources with a ResourceClaim. <br>
+A ResourceClaim is a claim to use a specific DeviceClass and represents an actual resource allocation made by the resource driver. <br>
+Users create ResourceClaims and refer to the DeviceClass they want to allocate resources for. The Pod can then use these resources with a ResourceClaim. <br>
 
 Let's use `kubectl explain` to see the ResourceClaim's description:
 
@@ -392,7 +392,7 @@ DESCRIPTION:
 ResourceClaims can be created manually by users or by Kubernetes from a ResourceClaimTemplate. <br>
 If a ResourceClaimTemplate is used then the ResourceClaim is bound to the Pod that uses the ResourceClaimTemplate and bound to the Pod's lifecycle. <br>
 
-User / independently / not-from-ResourceClaimTemplate created ResourceClaims can be shared among multiple Pods. <br>
+User created (not-from-ResourceClaimTemplate) ResourceClaims can be shared among multiple Pods and are not bound to any Pod's lifecycle. <br>
 
 Example ResourceClaim:
 ```yaml
@@ -419,7 +419,7 @@ This ResourceClaim Ceates requests devices in the `gpu.vendor.com` DeviceClass t
 
 #### ResourceClaimTemplate
 
-A ResourceClaimTemplate is a template to create ResourceClaims from for per-Pod access to resources. <br>
+A ResourceClaimTemplate is a template to create ResourceClaims from, for per-Pod access to resources. <br>
 
 Let's use `kubectl explain` to see the ResourceClaimTemplate's description:
 
