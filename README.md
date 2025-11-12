@@ -3288,6 +3288,8 @@ HOME=/root
 
 Environment variables are set in each container to indicate their accessible GPU(s) and how the GPUs would be configured. <br>
 
+Time slicing allows multiple workloads to share a GPU by alternating execution time <br>
+
 In the Ollama Pod, pull Meta's [llama 3.2 LLM](https://ollama.com/library/llama3.2): <br>
 
 ```shell
