@@ -198,6 +198,8 @@ Note: There is also a scheduler plugin that detects Pods which references a Reso
 
 ### DRA Resources
 
+<br><img src="./images/dra-resources.png" alt="DRA Resources" width="800"/><br>
+
 #### DRA Driver
 
 The DRA Driver has two main components: <br>
